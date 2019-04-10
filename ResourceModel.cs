@@ -29,7 +29,7 @@ namespace resource_etl
             public string Name { get; set; }
             public IEnumerable<string> Value { get; set; }
             public IEnumerable<string> Tags { get; set; }
-            public IEnumerable<ResourceModel.Resource> Resources { get; set; }
+            public IEnumerable<ResourceModel.Property.Resource> Resources { get; set; }
             public IEnumerable<Property> Properties { get; set; }
             public IEnumerable<string> Source { get; set; }
 
@@ -50,7 +50,18 @@ namespace resource_etl
                     {
                         Context = "Enheter",
                         ResourceId = enhet.ResourceId,
-                        Properties = new Property[] { },
+                        Properties =
+                            from p in enhet.Properties.Where(pr => pr.Resources.Any(r => r.Target != null && !(r.Code ?? new string[] { }).Any()))
+                            let targets =
+                                from resourcetarget in p.Resources.Where(r => r.Target != null && (r.Code == null || !r.Code.Any()))
+                                select resourcetarget.Target
+                            where targets.Any()
+                            select new Property {
+                                Name = p.Name,
+                                Resources =
+                                    from resource in LoadDocument<EnheterResource>(targets)
+                                    select new Property.Resource { ResourceId = resource.ResourceId, Code = resource.Code, Title = resource.Title }
+                            },
                         Source = new string[] { MetadataFor(enhet).Value<String>("@id") }
                     }
                 );
