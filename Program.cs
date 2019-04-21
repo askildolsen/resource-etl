@@ -17,6 +17,11 @@ namespace resource_etl
 
                 var stopwatch = Stopwatch.StartNew();
 
+                if (store.Maintenance.Send(new GetIndexOperation("ResourcePropertyIndex")) == null)
+                {
+                    new ResourceModel.ResourcePropertyIndex().Execute(store);
+                }
+
                 if (store.Maintenance.Send(new GetIndexOperation("ResourceReasonerIndex")) == null)
                 {
                     new ResourceModel.ResourceReasonerIndex().Execute(store);

@@ -22,6 +22,7 @@ namespace resource_etl
             public IEnumerable<string> Tags { get; set; }
             public IEnumerable<Property> Properties { get; set; }
             public IEnumerable<string> Source { get; set; }
+            public DateTime Modified { get; set; }
         }
 
         public class Property
@@ -38,35 +39,99 @@ namespace resource_etl
             }
         }
 
-        public class EnheterResource : Resource { }
+        public class ResourceProperty : Resource { }
+        public class ResourceMapped : Resource { }
+        public class EnheterResource : ResourceMapped { }
+
+        public class ResourcePropertyIndex : AbstractMultiMapIndexCreationTask<Resource>
+        {
+            public ResourcePropertyIndex()
+            {
+                AddMapForAll<ResourceMapped>(resources =>
+                    from resource in resources
+                    select new Resource
+                    {
+                        Context = MetadataFor(resource).Value<String>("@collection").Replace("Resource", ""),
+                        ResourceId = resource.ResourceId,
+                        Title = resource.Title,
+                        Code = resource.Code,
+                        Properties =
+                            from p in resource.Properties
+                            where p.Resources.Any(r => r.Target != null && (r.Code == null || !r.Code.Any()))
+                            select new Property {
+                                Name = p.Name,
+                                Resources =
+                                    from propertyresource in p.Resources.Where(r => r.Target != null && (r.Code == null || !r.Code.Any()))
+                                    select new Property.Resource {
+                                        Target = ResourceTarget("ResourceProperty", propertyresource.Target.Split(new[] { '/' }).First().Replace("Resource", "") + propertyresource.ResourceId)
+                                    }
+                            },
+                        Source = new[] { MetadataFor(resource).Value<String>("@id")},
+                        Modified = MetadataFor(resource).Value<DateTime>("@last-modified")
+                    }
+                );
+
+                Reduce = results =>
+                    from result in results
+                    group result by new { result.Context, result.ResourceId } into g
+                    select new Resource
+                    {
+                        Context = g.Key.Context,
+                        ResourceId = g.Key.ResourceId,
+                        Title = g.SelectMany(resource => resource.Title),
+                        Code = g.SelectMany(resource => resource.Code),
+                        Properties = g.SelectMany(resource => resource.Properties),
+                        Source = g.SelectMany(resource => resource.Source).Distinct(),
+                        Modified = g.Select(resource => resource.Modified).Max()
+                    };
+
+                Index(r => r.Properties, FieldIndexing.No);
+                Store(r => r.Properties, FieldStorage.Yes);
+
+                OutputReduceToCollection = "ResourceProperty";
+
+                AdditionalSources = new Dictionary<string, string>
+                {
+                    {
+                        "ResourceModelUtils",
+                        ReadResourceFile("resource_etl.ResourceModelUtils.cs")
+                    }
+                };
+            }
+
+            public override IndexDefinition CreateIndexDefinition()
+            {
+                var indexDefinition = base.CreateIndexDefinition();
+                indexDefinition.Configuration = new IndexConfiguration { { "Indexing.MapTimeoutInSec", "30"} };
+
+                return indexDefinition;
+            }
+        }
 
         public class ResourceReasonerIndex : AbstractMultiMapIndexCreationTask<Resource>
         {
             public ResourceReasonerIndex()
             {
-                AddMap<EnheterResource>(enheter =>
-                    from enhet in enheter
+                AddMapForAll<ResourceProperty>(resources =>
+                    from resource in resources
                     select new Resource
                     {
-                        Context = "Enheter",
-                        ResourceId = enhet.ResourceId,
-                        Properties =
-                            from p in enhet.Properties.Where(pr => pr.Resources.Any(r => r.Target != null && !(r.Code ?? new string[] { }).Any()))
-                            let targets =
-                                from resourcetarget in p.Resources.Where(r => r.Target != null && (r.Code == null || !r.Code.Any()))
-                                select resourcetarget.Target
-                            where targets.Any()
+                        Context = resource.Context,
+                        ResourceId = resource.ResourceId,
+                        Properties = 
+                            from p in resource.Properties
                             select new Property {
                                 Name = p.Name,
                                 Resources =
-                                    from resource in LoadDocument<EnheterResource>(targets)
-                                    select new Property.Resource { ResourceId = resource.ResourceId, Code = resource.Code, Title = resource.Title }
+                                from propertyresource in LoadDocument<ResourceProperty>(p.Resources.Select(r => r.Target))
+                                select new Property.Resource { ResourceId = propertyresource.ResourceId, Code = propertyresource.Code, Title = propertyresource.Title }
                             },
-                        Source = new string[] { MetadataFor(enhet).Value<String>("@id") }
+                        Source = resource.Source,
+                        Modified = resource.Modified
                     }
                 );
 
-                Reduce = results  =>
+                Reduce = results =>
                     from result in results
                     group result by new { result.Context, result.ResourceId } into g
                     select new Resource
@@ -74,7 +139,8 @@ namespace resource_etl
                         Context = g.Key.Context,
                         ResourceId = g.Key.ResourceId,
                         Properties = g.SelectMany(r => r.Properties),
-                        Source = g.SelectMany(resource => resource.Source).Distinct()
+                        Source = g.SelectMany(resource => resource.Source).Distinct(),
+                        Modified = g.Select(resource => resource.Modified).Max()
                     };
 
                 Index(r => r.Properties, FieldIndexing.No);

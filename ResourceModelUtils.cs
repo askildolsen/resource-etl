@@ -7,7 +7,7 @@ namespace resource_etl
     {
         public static string ResourceTarget(string Context, string ResourceId)
         {
-            return Context + "Resource/" + CalculateXXHash64(ResourceId);
+            return Context + "/" + CalculateXXHash64(ResourceId);
         }
 
         private static string CalculateXXHash64(string key)
