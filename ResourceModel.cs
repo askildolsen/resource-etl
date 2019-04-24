@@ -22,7 +22,8 @@ namespace resource_etl
             public IEnumerable<string> Tags { get; set; }
             public IEnumerable<Property> Properties { get; set; }
             public IEnumerable<string> Source { get; set; }
-            public DateTime Modified { get; set; }
+            public string Target { get; set; }
+            public DateTime? Modified { get; set; }
         }
 
         public class Property
@@ -30,13 +31,9 @@ namespace resource_etl
             public string Name { get; set; }
             public IEnumerable<string> Value { get; set; }
             public IEnumerable<string> Tags { get; set; }
-            public IEnumerable<ResourceModel.Property.Resource> Resources { get; set; }
+            public IEnumerable<Resource> Resources { get; set; }
             public IEnumerable<Property> Properties { get; set; }
             public IEnumerable<string> Source { get; set; }
-
-            public class Resource : ResourceModel.Resource {
-                public string Target { get; set; }
-            }
         }
 
         public class ResourceProperty : Resource { }
@@ -62,7 +59,7 @@ namespace resource_etl
                                 Name = p.Name,
                                 Resources =
                                     from propertyresource in p.Resources.Where(r => r.Target != null && (r.Code == null || !r.Code.Any()))
-                                    select new Property.Resource {
+                                    select new Resource {
                                         Target = ResourceTarget("ResourceProperty", propertyresource.Target.Split(new[] { '/' }).First().Replace("Resource", "") + propertyresource.ResourceId)
                                     }
                             },
@@ -124,7 +121,7 @@ namespace resource_etl
                                 Name = p.Name,
                                 Resources =
                                 from propertyresource in LoadDocument<ResourceProperty>(p.Resources.Select(r => r.Target))
-                                select new Property.Resource { ResourceId = propertyresource.ResourceId, Code = propertyresource.Code, Title = propertyresource.Title }
+                                select new Resource { ResourceId = propertyresource.ResourceId, Code = propertyresource.Code, Title = propertyresource.Title }
                             },
                         Source = resource.Source,
                         Modified = resource.Modified
