@@ -8,6 +8,8 @@
 
   <ItemGroup>
     <PackageReference Include="RavenDB.Client" Version="4.1.4" />
+    <PackageReference Include="NetTopologySuite" Version="1.15.2" />
+    <PackageReference Include="Spatial4n.Core" Version="0.3.0" />
   </ItemGroup>
 
   <ItemGroup>
