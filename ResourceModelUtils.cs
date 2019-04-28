@@ -42,5 +42,21 @@ namespace resource_etl
                 }
             }
         }
+
+        public static bool WKTIntersects(string wkt1, string wkt2)
+        {
+            var geometry1 = new NetTopologySuite.IO.WKTReader().Read(wkt1);
+            var geometry2 = new NetTopologySuite.IO.WKTReader().Read(wkt2);
+
+            return geometry1.Intersects(geometry2);
+        }
+
+        public static bool WKTWithin(string wktinner, string wktouter)
+        {
+            var geometryinner = new NetTopologySuite.IO.WKTReader().Read(wktinner);
+            var geometryouter = new NetTopologySuite.IO.WKTReader().Read(wktouter);
+
+            return geometryinner.Within(geometryouter);
+        }
     }
 }
