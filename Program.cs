@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
 using Raven.Client.Documents;
-using Raven.Client.Documents.BulkInsert;
 using Raven.Client.Documents.Operations.Indexes;
 
 namespace resource_etl
@@ -20,6 +19,16 @@ namespace resource_etl
                 if (store.Maintenance.Send(new GetIndexOperation("ResourcePropertyIndex")) == null)
                 {
                     new ResourceModel.ResourcePropertyIndex().Execute(store);
+                }
+
+                if (store.Maintenance.Send(new GetIndexOperation("ResourceDataPropertyIndex")) == null)
+                {
+                    new ResourceModel.ResourceDataPropertyIndex().Execute(store);
+                }
+
+                if (store.Maintenance.Send(new GetIndexOperation("ResourceInversePropertyIndex")) == null)
+                {
+                    new ResourceModel.ResourceInversePropertyIndex().Execute(store);
                 }
 
                 if (store.Maintenance.Send(new GetIndexOperation("ResourceReasonerIndex")) == null)

@@ -37,6 +37,8 @@ namespace resource_etl
         }
 
         public class ResourceProperty : Resource { }
+        public class ResourceDataProperty : ResourceProperty { }
+        public class ResourceInverseProperty : Resource { }
         public class ResourceMapped : Resource { }
         public class EnheterResource : ResourceMapped { }
 
@@ -46,23 +48,25 @@ namespace resource_etl
             {
                 AddMapForAll<ResourceMapped>(resources =>
                     from resource in resources
+                    let context = MetadataFor(resource).Value<String>("@collection").Replace("Resource", "")
+                    let properties =
+                        from p in resource.Properties
+                        select new Property {
+                            Name = p.Name,
+                            Resources =
+                                from propertyresource in p.Resources
+                                where propertyresource.ResourceId != null
+                                select new Resource {
+                                    Context = context,
+                                    ResourceId = propertyresource.ResourceId
+                                }
+                        }
+                    where properties.Any(p => p.Resources.Any())
                     select new Resource
                     {
-                        Context = MetadataFor(resource).Value<String>("@collection").Replace("Resource", ""),
+                        Context = context,
                         ResourceId = resource.ResourceId,
-                        Title = resource.Title,
-                        Code = resource.Code,
-                        Properties =
-                            from p in resource.Properties
-                            where p.Resources.Any(r => r.Target != null && (r.Code == null || !r.Code.Any()))
-                            select new Property {
-                                Name = p.Name,
-                                Resources =
-                                    from propertyresource in p.Resources.Where(r => r.Target != null && (r.Code == null || !r.Code.Any()))
-                                    select new Resource {
-                                        Target = ResourceTarget("ResourceProperty", propertyresource.Target.Split(new[] { '/' }).First().Replace("Resource", "") + propertyresource.ResourceId)
-                                    }
-                            },
+                        Properties = properties.Where(p => p.Resources.Any()),
                         Source = new[] { MetadataFor(resource).Value<String>("@id")},
                         Modified = MetadataFor(resource).Value<DateTime>("@last-modified")
                     }
@@ -75,9 +79,7 @@ namespace resource_etl
                     {
                         Context = g.Key.Context,
                         ResourceId = g.Key.ResourceId,
-                        Title = g.SelectMany(resource => resource.Title),
-                        Code = g.SelectMany(resource => resource.Code),
-                        Properties = g.SelectMany(resource => resource.Properties),
+                        Properties = g.SelectMany(resource => resource.Properties).Distinct(),
                         Source = g.SelectMany(resource => resource.Source).Distinct(),
                         Modified = g.Select(resource => resource.Modified).Max()
                     };
@@ -105,26 +107,24 @@ namespace resource_etl
             }
         }
 
-        public class ResourceReasonerIndex : AbstractMultiMapIndexCreationTask<Resource>
+        public class ResourceDataPropertyIndex : AbstractMultiMapIndexCreationTask<Resource>
         {
-            public ResourceReasonerIndex()
+            public ResourceDataPropertyIndex()
             {
-                AddMapForAll<ResourceProperty>(resources =>
+                AddMapForAll<ResourceMapped>(resources =>
                     from resource in resources
                     select new Resource
                     {
-                        Context = resource.Context,
+                        Context = MetadataFor(resource).Value<String>("@collection").Replace("Resource", ""),
                         ResourceId = resource.ResourceId,
-                        Properties = 
-                            from p in resource.Properties
-                            select new Property {
-                                Name = p.Name,
-                                Resources =
-                                from propertyresource in LoadDocument<ResourceProperty>(p.Resources.Select(r => r.Target))
-                                select new Resource { ResourceId = propertyresource.ResourceId, Code = propertyresource.Code, Title = propertyresource.Title }
-                            },
-                        Source = resource.Source,
-                        Modified = resource.Modified
+                        Properties = new[] {
+                            new Property {
+                                Name = "@terms",
+                                Value = resource.Code.Union(resource.Title).Distinct()
+                            }
+                        },
+                        Modified = MetadataFor(resource).Value<DateTime>("@last-modified"),
+                        Source = new string[] { MetadataFor(resource).Value<String>("@id") }
                     }
                 );
 
@@ -136,6 +136,174 @@ namespace resource_etl
                         Context = g.Key.Context,
                         ResourceId = g.Key.ResourceId,
                         Properties = g.SelectMany(r => r.Properties),
+                        Source = g.SelectMany(resource => resource.Source).Distinct(),
+                        Modified = g.Select(resource => resource.Modified).Max()
+                    };
+
+                Index(r => r.Properties, FieldIndexing.No);
+                Store(r => r.Properties, FieldStorage.Yes);
+
+                OutputReduceToCollection = "ResourceDataProperty";
+
+                AdditionalSources = new Dictionary<string, string>
+                {
+                    {
+                        "ResourceModelUtils",
+                        ReadResourceFile("resource_etl.ResourceModelUtils.cs")
+                    }
+                };
+            }
+
+            public override IndexDefinition CreateIndexDefinition()
+            {
+                var indexDefinition = base.CreateIndexDefinition();
+                indexDefinition.Configuration = new IndexConfiguration { { "Indexing.MapTimeoutInSec", "10"} };
+
+                return indexDefinition;
+            }
+        }
+
+        public class ResourceInversePropertyIndex : AbstractMultiMapIndexCreationTask<Resource>
+        {
+            public ResourceInversePropertyIndex()
+            {
+                AddMapForAll<ResourceProperty>(resources =>
+                    from resource in resources
+                    select new Resource
+                    {
+                        Context = resource.Context,
+                        ResourceId = resource.ResourceId,
+                        Properties = new Property[] { },
+                        Source = resource.Source.Union(new string[] { MetadataFor(resource).Value<String>("@id") })
+                    }
+                );
+
+                AddMap<ResourceProperty>(resources =>
+                    from resource in resources
+                    from property in resource.Properties
+                    from propertyresource in property.Resources
+                    where propertyresource.ResourceId != null
+                    select new Resource
+                    {
+                        Context = propertyresource.Context,
+                        ResourceId = propertyresource.ResourceId,
+                        Properties = new[] {
+                            new Property {
+                                Name = resource.Context + "/" + property.Name,
+                                Source = new[] { MetadataFor(resource).Value<String>("@id") }
+                            }
+                        },
+                        Source = new string[] { },
+                    }
+                );
+
+                Reduce = results =>
+                    from result in results
+                    group result by new { result.Context, result.ResourceId } into g
+                    select new Resource
+                    {
+                        Context = g.Key.Context,
+                        ResourceId = g.Key.ResourceId,
+                        Properties = 
+                            from property in g.SelectMany(resource => resource.Properties)
+                            group property by property.Name into propertyG
+                            select new Property {
+                                Name = propertyG.Key,
+                                Source = propertyG.SelectMany(p => p.Source)
+                            },
+                        Source = g.SelectMany(resource => resource.Source).Distinct()
+                    };
+
+                Index(r => r.Properties, FieldIndexing.No);
+                Store(r => r.Properties, FieldStorage.Yes);
+
+                OutputReduceToCollection = "ResourceInverseProperty";
+
+                AdditionalSources = new Dictionary<string, string>
+                {
+                    {
+                        "ResourceModelUtils",
+                        ReadResourceFile("resource_etl.ResourceModelUtils.cs")
+                    }
+                };
+            }
+
+            public override IndexDefinition CreateIndexDefinition()
+            {
+                var indexDefinition = base.CreateIndexDefinition();
+                indexDefinition.Configuration = new IndexConfiguration { { "Indexing.MapTimeoutInSec", "10"} };
+
+                return indexDefinition;
+            }
+        }
+
+        public class ResourceReasonerIndex : AbstractMultiMapIndexCreationTask<Resource>
+        {
+            public ResourceReasonerIndex()
+            {
+                AddMapForAll<ResourceProperty>(resources =>
+                    from resource in resources
+                    select new Resource
+                    {
+                        Context = resource.Context,
+                        ResourceId = resource.ResourceId,
+                        Properties = resource.Properties.Where(p => p.Resources.Any()),
+                        Source = resource.Source.Union(new string[] { MetadataFor(resource).Value<String>("@id") }),
+                        Modified = resource.Modified ?? DateTime.MinValue
+                    }
+                );
+
+                AddMap<ResourceInverseProperty>(resources =>
+                    from resource in resources
+                    from inverseproperty in resource.Properties
+                    from inverseresource in LoadDocument<ResourceProperty>(inverseproperty.Source).Where(r => r != null)
+                    select new Resource
+                    {
+                        Context = inverseresource.Context,
+                        ResourceId = inverseresource.ResourceId,
+                        Properties = (
+                            from property in inverseresource.Properties
+                            select new Property
+                            {
+                                Name = property.Name,
+                                Resources =
+                                    from propertyresource in property.Resources
+                                    where propertyresource.Context == resource.Context && propertyresource.ResourceId == resource.ResourceId
+                                    select new Resource
+                                    {
+                                        Context = propertyresource.Context,
+                                        ResourceId = propertyresource.ResourceId,
+                                        Source = propertyresource.Source.Union(resource.Source)
+                                    }
+                            }
+                        ).Where(p => p.Resources.Any()),
+                        Source = new string[] { },
+                        Modified = MetadataFor(resource).Value<DateTime>("@last-modified")
+                    }
+                
+                );
+
+                Reduce = results =>
+                    from result in results
+                    group result by new { result.Context, result.ResourceId } into g
+                    select new Resource
+                    {
+                        Context = g.Key.Context,
+                        ResourceId = g.Key.ResourceId,
+                        Properties = 
+                            from property in g.SelectMany(r => r.Properties)
+                            group property by property.Name into propertyG
+                            select new Property {
+                                Name = propertyG.Key,
+                                Resources =
+                                    from resource in propertyG.SelectMany(p => p.Resources)
+                                    group resource by new { resource.Context, resource.ResourceId } into resourceG
+                                    select new Resource {
+                                        Context = resourceG.Key.Context,
+                                        ResourceId = resourceG.Key.ResourceId,
+                                        Source = resourceG.SelectMany(r => r.Source).Distinct()
+                                    }
+                            },
                         Source = g.SelectMany(resource => resource.Source).Distinct(),
                         Modified = g.Select(resource => resource.Modified).Max()
                     };
