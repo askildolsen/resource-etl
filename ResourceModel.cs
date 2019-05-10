@@ -117,12 +117,7 @@ namespace resource_etl
                     {
                         Context = MetadataFor(resource).Value<String>("@collection").Replace("Resource", ""),
                         ResourceId = resource.ResourceId,
-                        Properties = new[] {
-                            new Property {
-                                Name = "@terms",
-                                Value = resource.Code.Union(resource.Title).Distinct()
-                            }
-                        },
+                        Properties = new Property[] { },
                         Modified = MetadataFor(resource).Value<DateTime>("@last-modified"),
                         Source = new string[] { MetadataFor(resource).Value<String>("@id") }
                     }
@@ -174,6 +169,7 @@ namespace resource_etl
                         Context = resource.Context,
                         ResourceId = resource.ResourceId,
                         Properties = new Property[] { },
+                        Modified = resource.Modified,
                         Source = resource.Source.Union(new string[] { MetadataFor(resource).Value<String>("@id") })
                     }
                 );
@@ -193,6 +189,7 @@ namespace resource_etl
                                 Source = new[] { MetadataFor(resource).Value<String>("@id") }
                             }
                         },
+                        Modified = null,
                         Source = new string[] { },
                     }
                 );
@@ -211,6 +208,7 @@ namespace resource_etl
                                 Name = propertyG.Key,
                                 Source = propertyG.SelectMany(p => p.Source)
                             },
+                        Modified = g.Select(r => r.Modified ?? DateTime.MinValue).Max(),
                         Source = g.SelectMany(resource => resource.Source).Distinct()
                     };
 
@@ -247,8 +245,8 @@ namespace resource_etl
                     {
                         Context = resource.Context,
                         ResourceId = resource.ResourceId,
-                        Properties = resource.Properties.Where(p => p.Resources.Any()),
-                        Source = resource.Source.Union(new string[] { MetadataFor(resource).Value<String>("@id") }),
+                        Properties = resource.Properties,
+                        Source = resource.Source,
                         Modified = resource.Modified ?? DateTime.MinValue
                     }
                 );
@@ -273,12 +271,13 @@ namespace resource_etl
                                     {
                                         Context = propertyresource.Context,
                                         ResourceId = propertyresource.ResourceId,
+                                        Modified = resource.Modified,
                                         Source = propertyresource.Source.Union(resource.Source)
                                     }
                             }
                         ).Where(p => p.Resources.Any()),
                         Source = new string[] { },
-                        Modified = MetadataFor(resource).Value<DateTime>("@last-modified")
+                        Modified = null
                     }
                 
                 );
@@ -301,11 +300,12 @@ namespace resource_etl
                                     select new Resource {
                                         Context = resourceG.Key.Context,
                                         ResourceId = resourceG.Key.ResourceId,
+                                        Modified = resourceG.Select(r => r.Modified ?? DateTime.MinValue).Max(),
                                         Source = resourceG.SelectMany(r => r.Source).Distinct()
                                     }
                             },
                         Source = g.SelectMany(resource => resource.Source).Distinct(),
-                        Modified = g.Select(resource => resource.Modified).Max()
+                        Modified = g.Select(resource => resource.Modified ?? DateTime.MinValue).Max()
                     };
 
                 Index(r => r.Properties, FieldIndexing.No);
