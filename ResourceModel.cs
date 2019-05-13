@@ -117,7 +117,10 @@ namespace resource_etl
                     {
                         Context = MetadataFor(resource).Value<String>("@collection").Replace("Resource", ""),
                         ResourceId = resource.ResourceId,
-                        Properties = new Property[] { },
+                        Properties = new[] {
+                            new Property { Name = "@title", Value = resource.Title },
+                            new Property { Name = "@code", Value = resource.Code },
+                        }.Where(p => p.Value.Any()),
                         Modified = MetadataFor(resource).Value<DateTime>("@last-modified"),
                         Source = new string[] { MetadataFor(resource).Value<String>("@id") }
                     }
@@ -253,6 +256,8 @@ namespace resource_etl
 
                 AddMap<ResourceInverseProperty>(resources =>
                     from resource in resources
+                    let resourceproperties = LoadDocument<ResourceProperty>(resource.Source.Where(s => s.StartsWith("ResourceProperty/"))).Where(r => r != null)
+                    let resourcedataproperties = LoadDocument<ResourceDataProperty>(resource.Source.Where(s => s.StartsWith("ResourceDataProperty/"))).Where(r => r != null)
                     from inverseproperty in resource.Properties
                     from inverseresource in LoadDocument<ResourceProperty>(inverseproperty.Source).Where(r => r != null)
                     select new Resource
@@ -271,8 +276,13 @@ namespace resource_etl
                                     {
                                         Context = propertyresource.Context,
                                         ResourceId = propertyresource.ResourceId,
+                                        Properties = resourcedataproperties.SelectMany(r => r.Properties).Union(
+                                            from resourceproperty in resourceproperties.SelectMany(r => r.Properties)
+                                            where resourceproperty.Source.Any()
+                                            select resourceproperty
+                                        ),
                                         Modified = resource.Modified,
-                                        Source = propertyresource.Source.Union(resource.Source)
+                                        Source = resource.Source.Where(s => !s.StartsWith("Resource"))
                                     }
                             }
                         ).Where(p => p.Resources.Any()),
@@ -294,12 +304,14 @@ namespace resource_etl
                             group property by property.Name into propertyG
                             select new Property {
                                 Name = propertyG.Key,
+                                Value = propertyG.SelectMany(p => p.Value).Distinct(),
                                 Resources =
                                     from resource in propertyG.SelectMany(p => p.Resources)
                                     group resource by new { resource.Context, resource.ResourceId } into resourceG
                                     select new Resource {
                                         Context = resourceG.Key.Context,
                                         ResourceId = resourceG.Key.ResourceId,
+                                        Properties = resourceG.SelectMany(r => r.Properties).Distinct(),
                                         Modified = resourceG.Select(r => r.Modified ?? DateTime.MinValue).Max(),
                                         Source = resourceG.SelectMany(r => r.Source).Distinct()
                                     }
