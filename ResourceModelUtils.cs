@@ -19,7 +19,7 @@ namespace resource_etl
         {
             var geometry = new NetTopologySuite.IO.WKTReader().Read(wkt);
 
-            var geohashsize = Spatial4n.Core.Util.GeohashUtils.DecodeBoundary(Spatial4n.Core.Util.GeohashUtils.EncodeLatLon(geometry.InteriorPoint.Y, geometry.InteriorPoint.X, precision), Spatial4n.Core.Context.SpatialContext.GEO);
+            var geohashsize = Spatial4n.Core.Util.GeohashUtils.DecodeBoundary(Spatial4n.Core.Util.GeohashUtils.EncodeLatLon(geometry.Coordinate.Y, geometry.Coordinate.X, precision), Spatial4n.Core.Context.SpatialContext.GEO);
 
             var shapeFactory = new NetTopologySuite.Utilities.GeometricShapeFactory();
             shapeFactory.Width = geohashsize.GetWidth();
