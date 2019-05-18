@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Diagnostics;
 using Raven.Client.Documents;
 using Raven.Client.Documents.Operations.Indexes;
@@ -15,6 +15,11 @@ namespace resource_etl
                 store.Initialize();
 
                 var stopwatch = Stopwatch.StartNew();
+
+                if (store.Maintenance.Send(new GetIndexOperation("ResourceClusterIndex")) == null)
+                {
+                    new ResourceModel.ResourceClusterIndex().Execute(store);
+                }
 
                 if (store.Maintenance.Send(new GetIndexOperation("ResourcePropertyIndex")) == null)
                 {

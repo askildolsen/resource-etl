@@ -36,11 +36,13 @@ namespace resource_etl
             public IEnumerable<string> Source { get; set; }
         }
 
+        public class ResourceCluster : Resource { }
         public class ResourceProperty : Resource { }
         public class ResourceDerivedProperty : ResourceProperty { }
         public class ResourceInverseProperty : Resource { }
         public class ResourceMapped : Resource { }
         public class EnheterResource : ResourceMapped { }
+        public class N50KartdataResource : ResourceMapped { }
 
         public class ResourcePropertyIndex : AbstractMultiMapIndexCreationTask<Resource>
         {
@@ -67,6 +69,19 @@ namespace resource_etl
                         Context = context,
                         ResourceId = resource.ResourceId,
                         Properties = properties.Where(p => p.Resources.Any()),
+                        Source = new[] { MetadataFor(resource).Value<String>("@id")},
+                        Modified = MetadataFor(resource).Value<DateTime>("@last-modified")
+                    }
+                );
+
+                AddMapForAll<ResourceMapped>(resources =>
+                    from resource in resources
+                    where resource.Properties.Any(p => p.Tags.Contains("@wkt"))
+                    select new Resource
+                    {
+                        Context = MetadataFor(resource).Value<String>("@collection").Replace("Resource", ""),
+                        ResourceId = resource.ResourceId,
+                        Properties = resource.Properties.Where(p => p.Tags.Contains("@wkt")),
                         Source = new[] { MetadataFor(resource).Value<String>("@id")},
                         Modified = MetadataFor(resource).Value<DateTime>("@last-modified")
                     }
@@ -107,6 +122,53 @@ namespace resource_etl
             }
         }
 
+        public class ResourceClusterIndex : AbstractMultiMapIndexCreationTask<Resource>
+        {
+            public ResourceClusterIndex()
+            {
+                AddMap<ResourceProperty>(resources =>
+                    from resource in resources
+                    from property in resource.Properties.Where(p => p.Tags.Contains("@wkt"))
+                    from wkt in property.Value.Where(v => v != null)
+                    from geohash in WKTEncodeGeohash(wkt, 5)
+                    select new Resource
+                    {
+                        Context = "@geohash",
+                        ResourceId = geohash,
+                        Source = new[] { MetadataFor(resource).Value<String>("@id")}
+                    }
+                );
+
+                Reduce = results =>
+                    from result in results
+                    group result by new { result.Context, result.ResourceId } into g
+                    select new Resource
+                    {
+                        Context = g.Key.Context,
+                        ResourceId = g.Key.ResourceId,
+                        Source = g.SelectMany(r => r.Source).Distinct()
+                    };
+
+                OutputReduceToCollection = "ResourceCluster";
+
+                AdditionalSources = new Dictionary<string, string>
+                {
+                    {
+                        "ResourceModelUtils",
+                        ReadResourceFile("resource_etl.ResourceModelUtils.cs")
+                    }
+                };
+            }
+
+            public override IndexDefinition CreateIndexDefinition()
+            {
+                var indexDefinition = base.CreateIndexDefinition();
+                indexDefinition.Configuration = new IndexConfiguration { { "Indexing.MapTimeoutInSec", "10"} };
+
+                return indexDefinition;
+            }
+        }
+
         public class ResourceDerivedPropertyIndex : AbstractMultiMapIndexCreationTask<Resource>
         {
             public ResourceDerivedPropertyIndex()
@@ -123,6 +185,40 @@ namespace resource_etl
                         }.Where(p => p.Value.Any()),
                         Source = new string[] { MetadataFor(resource).Value<String>("@id") },
                         Modified = MetadataFor(resource).Value<DateTime>("@last-modified")
+                    }
+                );
+
+                AddMap<ResourceCluster>(clusters =>
+                    from cluster in clusters.Where(r => r.Context == "@geohash")
+                    let resources = LoadDocument<ResourceProperty>(cluster.Source).Where(r => r != null)
+                    from resource in resources
+                    from property in resource.Properties.Where(p => p.Tags.Contains("@wkt"))
+
+                    let intersects =
+                        from resource_wkt in property.Value.Where(v => v != null)
+                        from resourcecompare in resources.Where(r => !(r.Context == resource.Context && r.ResourceId == resource.ResourceId))
+                        from resourcecompare_wkt in resourcecompare.Properties.Where(p => p.Tags.Contains("@wkt")).SelectMany(p => p.Value).Where(v => v != null)
+                        where WKTIntersects(resource_wkt, resourcecompare_wkt)
+                        select
+                            new Resource {
+                                Context = resourcecompare.Context,
+                                ResourceId = resourcecompare.ResourceId
+                            }
+                    
+                    where intersects.Any()
+
+                    select new Resource
+                    {
+                        Context = resource.Context,
+                        ResourceId = resource.ResourceId,
+                        Properties = new[] {
+                            new Property {
+                                Name = property.Name,
+                                Resources = intersects
+                            }
+                        },
+                        Source = new string[] { },
+                        Modified = MetadataFor(cluster).Value<DateTime>("@last-modified")
                     }
                 );
 
