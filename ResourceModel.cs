@@ -37,7 +37,7 @@ namespace resource_etl
         }
 
         public class ResourceProperty : Resource { }
-        public class ResourceDataProperty : ResourceProperty { }
+        public class ResourceDerivedProperty : ResourceProperty { }
         public class ResourceInverseProperty : Resource { }
         public class ResourceMapped : Resource { }
         public class EnheterResource : ResourceMapped { }
@@ -107,9 +107,9 @@ namespace resource_etl
             }
         }
 
-        public class ResourceDataPropertyIndex : AbstractMultiMapIndexCreationTask<Resource>
+        public class ResourceDerivedPropertyIndex : AbstractMultiMapIndexCreationTask<Resource>
         {
-            public ResourceDataPropertyIndex()
+            public ResourceDerivedPropertyIndex()
             {
                 AddMapForAll<ResourceMapped>(resources =>
                     from resource in resources
@@ -121,8 +121,8 @@ namespace resource_etl
                             new Property { Name = "@title", Value = resource.Title },
                             new Property { Name = "@code", Value = resource.Code },
                         }.Where(p => p.Value.Any()),
-                        Modified = MetadataFor(resource).Value<DateTime>("@last-modified"),
-                        Source = new string[] { MetadataFor(resource).Value<String>("@id") }
+                        Source = new string[] { MetadataFor(resource).Value<String>("@id") },
+                        Modified = MetadataFor(resource).Value<DateTime>("@last-modified")
                     }
                 );
 
@@ -133,7 +133,14 @@ namespace resource_etl
                     {
                         Context = g.Key.Context,
                         ResourceId = g.Key.ResourceId,
-                        Properties = g.SelectMany(r => r.Properties),
+                        Properties = 
+                            from property in g.SelectMany(resource => resource.Properties)
+                            group property by property.Name into propertyG
+                            select new Property {
+                                Name = propertyG.Key,
+                                Value = propertyG.SelectMany(p => p.Value).Distinct(),
+                                Resources = propertyG.SelectMany(p => p.Resources).Distinct()
+                            },
                         Source = g.SelectMany(resource => resource.Source).Distinct(),
                         Modified = g.Select(resource => resource.Modified).Max()
                     };
@@ -141,7 +148,7 @@ namespace resource_etl
                 Index(r => r.Properties, FieldIndexing.No);
                 Store(r => r.Properties, FieldStorage.Yes);
 
-                OutputReduceToCollection = "ResourceDataProperty";
+                OutputReduceToCollection = "ResourceDerivedProperty";
 
                 AdditionalSources = new Dictionary<string, string>
                 {
@@ -177,7 +184,7 @@ namespace resource_etl
                     }
                 );
 
-                AddMap<ResourceProperty>(resources =>
+                AddMapForAll<ResourceProperty>(resources =>
                     from resource in resources
                     from property in resource.Properties
                     from propertyresource in property.Resources
@@ -257,7 +264,7 @@ namespace resource_etl
                 AddMap<ResourceInverseProperty>(resources =>
                     from resource in resources
                     let resourceproperties = LoadDocument<ResourceProperty>(resource.Source.Where(s => s.StartsWith("ResourceProperty/"))).Where(r => r != null)
-                    let resourcedataproperties = LoadDocument<ResourceDataProperty>(resource.Source.Where(s => s.StartsWith("ResourceDataProperty/"))).Where(r => r != null)
+                    let resourcederivedproperties = LoadDocument<ResourceDerivedProperty>(resource.Source.Where(s => s.StartsWith("ResourceDerivedProperty/"))).Where(r => r != null)
                     from inverseproperty in resource.Properties
                     from inverseresource in LoadDocument<ResourceProperty>(inverseproperty.Source).Where(r => r != null)
                     select new Resource
@@ -276,7 +283,7 @@ namespace resource_etl
                                     {
                                         Context = propertyresource.Context,
                                         ResourceId = propertyresource.ResourceId,
-                                        Properties = resourcedataproperties.SelectMany(r => r.Properties).Union(
+                                        Properties = resourcederivedproperties.SelectMany(r => r.Properties).Union(
                                             from resourceproperty in resourceproperties.SelectMany(r => r.Properties)
                                             where resourceproperty.Source.Any()
                                             select resourceproperty
@@ -289,7 +296,6 @@ namespace resource_etl
                         Source = new string[] { },
                         Modified = null
                     }
-                
                 );
 
                 Reduce = results =>
