@@ -173,21 +173,6 @@ namespace resource_etl
         {
             public ResourceDerivedPropertyIndex()
             {
-                AddMapForAll<ResourceMapped>(resources =>
-                    from resource in resources
-                    select new Resource
-                    {
-                        Context = MetadataFor(resource).Value<String>("@collection").Replace("Resource", ""),
-                        ResourceId = resource.ResourceId,
-                        Properties = new[] {
-                            new Property { Name = "@title", Value = resource.Title },
-                            new Property { Name = "@code", Value = resource.Code },
-                        }.Where(p => p.Value.Any()),
-                        Source = new string[] { MetadataFor(resource).Value<String>("@id") },
-                        Modified = MetadataFor(resource).Value<DateTime>("@last-modified")
-                    }
-                );
-
                 AddMap<ResourceCluster>(clusters =>
                     from cluster in clusters.Where(r => r.Context == "@geohash" && r.Source.Skip(1).Any())
                     let resources = LoadDocument<ResourceProperty>(cluster.Source).Where(r => r != null)
