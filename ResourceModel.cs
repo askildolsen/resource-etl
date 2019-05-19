@@ -189,7 +189,7 @@ namespace resource_etl
                 );
 
                 AddMap<ResourceCluster>(clusters =>
-                    from cluster in clusters.Where(r => r.Context == "@geohash")
+                    from cluster in clusters.Where(r => r.Context == "@geohash" && r.Source.Skip(1).Any())
                     let resources = LoadDocument<ResourceProperty>(cluster.Source).Where(r => r != null)
                     from resource in resources
                     from property in resource.Properties.Where(p => p.Tags.Contains("@wkt"))
