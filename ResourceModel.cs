@@ -22,7 +22,6 @@ namespace resource_etl
             public IEnumerable<string> Tags { get; set; }
             public IEnumerable<Property> Properties { get; set; }
             public IEnumerable<string> Source { get; set; }
-            public string Target { get; set; }
             public DateTime? Modified { get; set; }
         }
 
