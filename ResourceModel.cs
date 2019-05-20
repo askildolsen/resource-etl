@@ -344,8 +344,6 @@ namespace resource_etl
 
                 AddMap<ResourceInverseProperty>(resources =>
                     from resource in resources
-                    let resourceproperties = LoadDocument<ResourceProperty>(resource.Source.Where(s => s.StartsWith("ResourceProperty/"))).Where(r => r != null)
-                    let resourcederivedproperties = LoadDocument<ResourceDerivedProperty>(resource.Source.Where(s => s.StartsWith("ResourceDerivedProperty/"))).Where(r => r != null)
                     from inverseproperty in resource.Properties
                     from inverseresource in LoadDocument<ResourceProperty>(inverseproperty.Source).Where(r => r != null)
                     select new Resource
@@ -364,11 +362,7 @@ namespace resource_etl
                                     {
                                         Context = propertyresource.Context,
                                         ResourceId = propertyresource.ResourceId,
-                                        Properties = resourcederivedproperties.SelectMany(r => r.Properties).Union(
-                                            from resourceproperty in resourceproperties.SelectMany(r => r.Properties)
-                                            where resourceproperty.Source.Any()
-                                            select resourceproperty
-                                        ),
+                                        Properties = new[] { new Property { Source = resource.Source.Where(s => s.StartsWith("Resource")) } },
                                         Modified = resource.Modified,
                                         Source = resource.Source.Where(s => !s.StartsWith("Resource"))
                                     }
