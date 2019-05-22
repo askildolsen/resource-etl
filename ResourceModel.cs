@@ -385,6 +385,7 @@ namespace resource_etl
                             select new Property {
                                 Name = propertyG.Key,
                                 Value = propertyG.SelectMany(p => p.Value).Distinct(),
+                                Tags = propertyG.SelectMany(p => p.Tags).Distinct(),
                                 Resources =
                                     from resource in propertyG.SelectMany(p => p.Resources)
                                     group resource by new { resource.Context, resource.ResourceId } into resourceG
