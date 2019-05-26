@@ -16,14 +16,14 @@ namespace resource_etl
 
                 var stopwatch = Stopwatch.StartNew();
 
-                if (store.Maintenance.Send(new GetIndexOperation("ResourceClusterIndex")) == null)
-                {
-                    new ResourceModel.ResourceClusterIndex().Execute(store);
-                }
-
                 if (store.Maintenance.Send(new GetIndexOperation("ResourcePropertyIndex")) == null)
                 {
                     new ResourceModel.ResourcePropertyIndex().Execute(store);
+                }
+
+                if (store.Maintenance.Send(new GetIndexOperation("ResourceClusterIndex")) == null)
+                {
+                    new ResourceModel.ResourceClusterIndex().Execute(store);
                 }
 
                 if (store.Maintenance.Send(new GetIndexOperation("ResourceDerivedPropertyIndex")) == null)
