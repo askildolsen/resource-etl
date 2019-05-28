@@ -174,31 +174,32 @@ namespace resource_etl
             {
                 AddMap<ResourceCluster>(clusters =>
                     from cluster in clusters.Where(r => r.Context == "@geohash" && r.Source.Skip(1).Any())
-                    let resources = LoadDocument<ResourceProperty>(cluster.Source).Where(r => r != null)
-                    from resource in resources
-                    from property in resource.Properties.Where(p => p.Tags.Contains("@wkt"))
 
-                    let intersects =
+                    let comparisons = (
+                        from resource in LoadDocument<ResourceProperty>(cluster.Source).Where(r => r != null)
+                        from property in resource.Properties.Where(p => p.Tags.Contains("@wkt"))
                         from resource_wkt in property.Value.Where(v => v != null)
-                        from resourcecompare in resources.Where(r => !(r.Context == resource.Context && r.ResourceId == resource.ResourceId))
-                        from resourcecompare_wkt in resourcecompare.Properties.Where(p => p.Tags.Contains("@wkt")).SelectMany(p => p.Value).Where(v => v != null)
-                        where WKTIntersects(resource_wkt, resourcecompare_wkt)
-                        select
-                            new Resource {
-                                Context = resourcecompare.Context,
-                                ResourceId = resourcecompare.ResourceId
-                            }
+                        select new {
+                            Context = resource.Context,
+                            ResourceId = resource.ResourceId,
+                            Name = property.Name,
+                            Geometry = WKTToGeometry(resource_wkt)
+                        }).ToList()
+
+                    from resourcecompare in comparisons
+
+                    let intersects = Intersects(resourcecompare, comparisons)
                     
                     where intersects.Any()
 
                     select new Resource
                     {
-                        Context = resource.Context,
-                        ResourceId = resource.ResourceId,
+                        Context = resourcecompare.Context,
+                        ResourceId = resourcecompare.ResourceId,
                         Properties = new[] {
                             new Property {
-                                Name = property.Name,
-                                Resources = intersects
+                                Name = resourcecompare.Name,
+                                Resources = (IEnumerable<Resource>)intersects
                             }
                         },
                         Source = new string[] { },

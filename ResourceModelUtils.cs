@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace resource_etl
 {
@@ -33,20 +34,23 @@ namespace resource_etl
             }
         }
 
-        public static bool WKTIntersects(string wkt1, string wkt2)
+        public static GeoAPI.Geometries.IGeometry WKTToGeometry(string wkt)
         {
-            var geometry1 = new NetTopologySuite.IO.WKTReader().Read(wkt1);
-            var geometry2 = new NetTopologySuite.IO.WKTReader().Read(wkt2);
-
-            return geometry1.Intersects(geometry2);
+            return new NetTopologySuite.IO.WKTReader().Read(wkt);
         }
 
-        public static bool WKTWithin(string wktinner, string wktouter)
+        public static IEnumerable<dynamic> Intersects(dynamic resource, IEnumerable<dynamic> comparisons)
         {
-            var geometryinner = new NetTopologySuite.IO.WKTReader().Read(wktinner);
-            var geometryouter = new NetTopologySuite.IO.WKTReader().Read(wktouter);
-
-            return geometryinner.Within(geometryouter);
+            foreach(var compare in ((IEnumerable<dynamic>)comparisons).Where(r => r.ResourceId != resource.ResourceId || r.Context != resource.Context))
+            {
+                if (resource.Geometry.Intersects(compare.Geometry))
+                {
+                    yield return new {
+                        Context = compare.Context,
+                        ResourceId = compare.ResourceId
+                    };
+                }
+            }
         }
     }
 }
