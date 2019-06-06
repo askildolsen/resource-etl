@@ -101,5 +101,17 @@ namespace resource_etl
                 }
             }
         }
+
+        public static string ReadResourceFile(string filename)
+        {
+            var assembly = System.Reflection.Assembly.GetExecutingAssembly();
+            using (var stream = assembly.GetManifestResourceStream(filename))
+            {
+                using (var reader = new System.IO.StreamReader(stream))
+                {
+                    return reader.ReadToEnd();
+                }
+            }
+        }
     }
 }
