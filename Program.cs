@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Diagnostics;
 using Raven.Client.Documents;
 using Raven.Client.Documents.Operations.Indexes;
@@ -18,27 +18,27 @@ namespace resource_etl
 
                 if (store.Maintenance.Send(new GetIndexOperation("ResourcePropertyIndex")) == null)
                 {
-                    new ResourceModel.ResourcePropertyIndex().Execute(store);
+                    new ResourcePropertyIndex().Execute(store);
                 }
 
                 if (store.Maintenance.Send(new GetIndexOperation("ResourceClusterIndex")) == null)
                 {
-                    new ResourceModel.ResourceClusterIndex().Execute(store);
+                    new ResourceClusterIndex().Execute(store);
                 }
 
                 if (store.Maintenance.Send(new GetIndexOperation("ResourceDerivedPropertyIndex")) == null)
                 {
-                    new ResourceModel.ResourceDerivedPropertyIndex().Execute(store);
+                    new ResourceDerivedPropertyIndex().Execute(store);
                 }
 
                 if (store.Maintenance.Send(new GetIndexOperation("ResourceInversePropertyIndex")) == null)
                 {
-                    new ResourceModel.ResourceInversePropertyIndex().Execute(store);
+                    new ResourceInversePropertyIndex().Execute(store);
                 }
 
                 if (store.Maintenance.Send(new GetIndexOperation("ResourceReasonerIndex")) == null)
                 {
-                    new ResourceModel.ResourceReasonerIndex().Execute(store);
+                    new ResourceReasonerIndex().Execute(store);
                 }
 
                 stopwatch.Stop();
