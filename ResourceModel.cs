@@ -134,7 +134,8 @@ namespace resource_etl
                     {
                         Context = "@geohash",
                         ResourceId = geohash,
-                        Source = new[] { MetadataFor(resource).Value<String>("@id")}
+                        Source = new[] { MetadataFor(resource).Value<String>("@id")},
+                        Modified = MetadataFor(resource).Value<DateTime>("@last-modified")
                     }
                 );
 
@@ -145,7 +146,8 @@ namespace resource_etl
                     {
                         Context = g.Key.Context,
                         ResourceId = g.Key.ResourceId,
-                        Source = g.SelectMany(r => r.Source).Distinct()
+                        Source = g.SelectMany(r => r.Source).Distinct(),
+                        Modified = g.Select(resource => resource.Modified).Max()
                     };
 
                 OutputReduceToCollection = "ResourceCluster";
