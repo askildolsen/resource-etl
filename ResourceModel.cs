@@ -43,5 +43,9 @@ namespace resource_etl
         public class ResourceMapped : Resource { }
         public class EnheterResource : ResourceMapped { }
         public class N50KartdataResource : ResourceMapped { }
+
+        public static IEnumerable<Resource> Ontology =
+            new Resource[] {
+            };
     }
 }

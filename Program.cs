@@ -1,7 +1,10 @@
-using System;
+﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using Raven.Client.Documents;
+using Raven.Client.Documents.BulkInsert;
 using Raven.Client.Documents.Operations.Indexes;
+using Raven.Client.Json;
 
 namespace resource_etl
 {
@@ -15,6 +18,21 @@ namespace resource_etl
                 store.Initialize();
 
                 var stopwatch = Stopwatch.StartNew();
+
+                using (BulkInsertOperation bulkInsert = store.BulkInsert())
+                {
+                    foreach(var resource in ResourceModel.Ontology)
+                    {
+                        foreach(var type in resource.Type)
+                        {
+                            bulkInsert.Store(
+                                resource,
+                                "ResourceOntology/" + resource.Context + "/" + type,
+                                new MetadataAsDictionary(new Dictionary<string, object> { { "@collection", "ResourceOntology"}})
+                            );
+                        }
+                    }
+                }
 
                 if (store.Maintenance.Send(new GetIndexOperation("ResourcePropertyIndex")) == null)
                 {
