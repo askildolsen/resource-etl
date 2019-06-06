@@ -37,6 +37,7 @@ namespace resource_etl
 
         public class ResourceCluster : Resource { }
         public class ResourceProperty : Resource { }
+        public class ResourceOntology : Resource { }
         public class ResourceDerivedProperty : ResourceProperty { }
         public class ResourceInverseProperty : Resource { }
         public class ResourceMapped : Resource { }
@@ -50,24 +51,49 @@ namespace resource_etl
                 AddMapForAll<ResourceMapped>(resources =>
                     from resource in resources
                     let context = MetadataFor(resource).Value<String>("@collection").Replace("Resource", "")
-                    let properties =
-                        from p in resource.Properties
-                        select new Property {
-                            Name = p.Name,
-                            Resources =
-                                from propertyresource in p.Resources
-                                where propertyresource.ResourceId != null
-                                select new Resource {
-                                    Context = context,
-                                    ResourceId = propertyresource.ResourceId
-                                }
-                        }
-                    where properties.Any(p => p.Resources.Any())
                     select new Resource
                     {
                         Context = context,
                         ResourceId = resource.ResourceId,
-                        Properties = properties.Where(p => p.Resources.Any()),
+                        Properties =
+                            from property in resource.Properties.Where(p => p.Resources.Any())
+                            select new Property {
+                                Name = property.Name,
+                                Resources =
+                                    from propertyresource in property.Resources
+                                    where propertyresource.ResourceId != null
+                                    select new Resource {
+                                        Context = context,
+                                        ResourceId = propertyresource.ResourceId
+                                    }
+                            },
+                        Source = new[] { MetadataFor(resource).Value<String>("@id")},
+                        Modified = MetadataFor(resource).Value<DateTime>("@last-modified")
+                    }
+                );
+
+                AddMapForAll<ResourceMapped>(resources =>
+                    from resource in resources
+                    let context = MetadataFor(resource).Value<String>("@collection").Replace("Resource", "")
+                    let resourceontology =
+                        from resourcetype in resource.Type
+                        let ontology = LoadDocument<ResourceOntology>("ResourceOntology/" + context + "/" + resourcetype)
+                        where ontology != null
+                        select ontology
+
+                    select new Resource
+                    {
+                        Context = context,
+                        ResourceId = resource.ResourceId,
+                        Properties = (
+                            new[] {
+                                new Property { Name = "@type", Value = resource.Type }
+                            }
+                        ).Union(
+                            new[] {
+                                new Property { Name = "@ontology", Resources = resourceontology }
+                            }
+                        ),
                         Source = new[] { MetadataFor(resource).Value<String>("@id")},
                         Modified = MetadataFor(resource).Value<DateTime>("@last-modified")
                     }
@@ -176,34 +202,45 @@ namespace resource_etl
             {
                 AddMap<ResourceCluster>(clusters =>
                     from cluster in clusters.Where(r => r.Context == "@geohash" && r.Source.Skip(1).Any())
+                    let resources = LoadDocument<ResourceProperty>(cluster.Source).Where(r => r != null)
 
-                    let comparisons = (
-                        from resource in LoadDocument<ResourceProperty>(cluster.Source).Where(r => r != null)
-                        from property in resource.Properties.Where(p => p.Tags.Contains("@wkt"))
-                        from resource_wkt in property.Value.Where(v => v != null)
-                        select new {
+                    let comparisons = 
+                        from resource in resources
+                        let ontology = resource.Properties.Where(p => p.Name == "@ontology").SelectMany(p => p.Resources)
+                        select new Resource
+                        {
                             Context = resource.Context,
                             ResourceId = resource.ResourceId,
-                            Name = property.Name,
-                            Geometry = WKTToGeometry(resource_wkt)
-                        }).ToList()
+                            Properties =
+                                from property in resource.Properties
+                                let propertyontology = ontology.SelectMany(r => r.Properties).Where(p => p.Name == property.Name)
+                                where propertyontology.Any()
+                                select new Property {
+                                    Name = property.Name,
+                                    Value = property.Value,
+                                    Resources =
+                                        from resourcecompare in resources.Where(r => !(r.Context == resource.Context && r.ResourceId == resource.ResourceId))
+                                        let ontologyresources = propertyontology.SelectMany(p => p.Resources)
+                                        where ontologyresources.Any(r => r.Type.Any(t => resourcecompare.Properties.Where(p => p.Name == "@type").SelectMany(p => p.Value).Contains(t)))
+                                        select new Resource {
+                                            Context = resourcecompare.Context,
+                                            ResourceId = resourcecompare.ResourceId,
+                                            Properties =
+                                                from propertycompare in resourcecompare.Properties.Where(p => p.Tags.Contains("@wkt"))
+                                                select new Property {
+                                                    Name = propertycompare.Name,
+                                                    Value = propertycompare.Value
+                                                }
+                                        }
+                                }
+                        }
 
-                    from resourcecompare in comparisons
-
-                    let intersects = Intersects(resourcecompare, comparisons)
-                    
-                    where intersects.Any()
-
+                    from resource in (IEnumerable<Resource>)Intersects(comparisons)
                     select new Resource
                     {
-                        Context = resourcecompare.Context,
-                        ResourceId = resourcecompare.ResourceId,
-                        Properties = new[] {
-                            new Property {
-                                Name = resourcecompare.Name,
-                                Resources = (IEnumerable<Resource>)intersects
-                            }
-                        },
+                        Context = resource.Context,
+                        ResourceId = resource.ResourceId,
+                        Properties = resource.Properties,
                         Source = new string[] { },
                         Modified = MetadataFor(cluster).Value<DateTime>("@last-modified")
                     }

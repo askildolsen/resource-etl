@@ -34,20 +34,69 @@ namespace resource_etl
             }
         }
 
-        public static GeoAPI.Geometries.IGeometry WKTToGeometry(string wkt)
+        public static IEnumerable<dynamic> Intersects(IEnumerable<dynamic> resources)
         {
-            return new NetTopologySuite.IO.WKTReader().Read(wkt);
-        }
+            var reader = new NetTopologySuite.IO.WKTReader();
+            var intersects = new HashSet<(dynamic, dynamic, dynamic, dynamic, dynamic, dynamic)>();
 
-        public static IEnumerable<dynamic> Intersects(dynamic resource, IEnumerable<dynamic> comparisons)
-        {
-            foreach(var compare in ((IEnumerable<dynamic>)comparisons).Where(r => r.ResourceId != resource.ResourceId || r.Context != resource.Context))
+            foreach(var resource in resources)
             {
-                if (resource.Geometry.Intersects(compare.Geometry))
+                var properties = new List<dynamic>();
+
+                foreach(var property in resource.Properties)
+                {
+                    var propertyresources = new List<dynamic>();
+
+                    foreach(var value in property.Value)
+                    {
+                        var geometry = reader.Read(value);
+
+                        foreach (var propertyresource in property.Resources)
+                        {
+                            foreach(var resourceproperty in propertyresource.Properties)
+                            {
+                                if (intersects.Contains((propertyresource.ResourceId, propertyresource.Context, resourceproperty.Name, resource.ResourceId, resource.Context, property.Name)))
+                                {
+                                    propertyresources.Add(propertyresource);
+                                }
+                                else {
+                                    foreach(var resourcepropertyvalue in resourceproperty.Value)
+                                    {
+                                        var geometrycompare = reader.Read(resourcepropertyvalue);
+
+                                        if (geometry.Intersects(geometrycompare))
+                                        {
+                                            intersects.Add((resource.ResourceId, resource.Context, property.Name, propertyresource.ResourceId, propertyresource.Context, resourceproperty.Name));
+                                            propertyresources.Add(propertyresource);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if (propertyresources.Any())
+                    {
+                        properties.Add(
+                            new {
+                                Name = property.Name,
+                                Resources =
+                                    from propertyresource in propertyresources
+                                    select new {
+                                        Context = propertyresource.Context,
+                                        ResourceId = propertyresource.ResourceId
+                                    }
+                            }
+                        );
+                    }
+                }
+
+                if (properties.Any())
                 {
                     yield return new {
-                        Context = compare.Context,
-                        ResourceId = compare.ResourceId
+                        Context = resource.Context,
+                        ResourceId = resource.ResourceId,
+                        Properties = properties
                     };
                 }
             }
