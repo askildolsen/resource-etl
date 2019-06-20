@@ -24,7 +24,7 @@ namespace resource_etl
                         Context = resource.Context,
                         ResourceId = resource.ResourceId,
                         Properties =
-                            from property in resource.Properties
+                            from property in resource.Properties.Where(p => p.Tags.Contains("@wkt"))
                             let propertyontology = ontology.SelectMany(r => r.Properties).Where(p => p.Name == property.Name)
                             where propertyontology.Any()
                             select new Property {
