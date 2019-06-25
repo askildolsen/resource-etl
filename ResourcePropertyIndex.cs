@@ -15,62 +15,35 @@ namespace resource_etl
             AddMapForAll<ResourceMapped>(resources =>
                 from resource in resources
                 let context = MetadataFor(resource).Value<String>("@collection").Replace("Resource", "")
-                select new Resource
-                {
-                    Context = context,
-                    ResourceId = resource.ResourceId,
-                    Properties =
-                        from property in resource.Properties.Where(p => p.Resources.Any())
-                        select new Property {
-                            Name = property.Name,
-                            Resources =
-                                from propertyresource in property.Resources
-                                where propertyresource.ResourceId != null
-                                select new Resource {
-                                    Context = context,
-                                    ResourceId = propertyresource.ResourceId
-                                }
-                        },
-                    Source = new[] { MetadataFor(resource).Value<String>("@id")},
-                    Modified = MetadataFor(resource).Value<DateTime>("@last-modified")
-                }
-            );
-
-            AddMapForAll<ResourceMapped>(resources =>
-                from resource in resources
-                let context = MetadataFor(resource).Value<String>("@collection").Replace("Resource", "")
-                let resourceontology =
-                    from resourcetype in resource.Type
-                    let ontology = LoadDocument<ResourceOntology>("ResourceOntology/" + context + "/" + resourcetype)
-                    where ontology != null
-                    select ontology
-
+                let ontology = resource.Type.Select(t => LoadDocument<ResourceOntology>("ResourceOntology/" + context + "/" + t)).Where(r => r != null)
                 select new Resource
                 {
                     Context = context,
                     ResourceId = resource.ResourceId,
                     Properties = (
-                        new[] {
-                            new Property { Name = "@type", Value = resource.Type }
+                        from ontologyproperty in ontology.SelectMany(r => r.Properties)
+                        from property in resource.Properties.Where(p => p.Name == ontologyproperty.Name)
+                        select new Property {
+                            Name = property.Name,
+                            Value = property.Value.Union(ontologyproperty.Value).Distinct(),
+                            Tags = property.Tags.Union(ontologyproperty.Tags).Distinct(),
+                            Resources = (
+                                from propertyresource in property.Resources.Where(r => r.ResourceId != null)
+                                select new Resource {
+                                    Context = context,
+                                    ResourceId = propertyresource.ResourceId
+                                }
+                            ).Union(
+                                from ontologyresource in ontologyproperty.Resources
+                                select ontologyresource
+                            ),
+                            Properties = ontologyproperty.Properties
                         }
                     ).Union(
                         new[] {
-                            new Property { Name = "@ontology", Resources = resourceontology }
+                            new Property { Name = "@type", Value = resource.Type }
                         }
                     ),
-                    Source = new[] { MetadataFor(resource).Value<String>("@id")},
-                    Modified = MetadataFor(resource).Value<DateTime>("@last-modified")
-                }
-            );
-
-            AddMapForAll<ResourceMapped>(resources =>
-                from resource in resources
-                where resource.Properties.Any(p => p.Tags.Contains("@wkt"))
-                select new Resource
-                {
-                    Context = MetadataFor(resource).Value<String>("@collection").Replace("Resource", ""),
-                    ResourceId = resource.ResourceId,
-                    Properties = resource.Properties.Where(p => p.Tags.Contains("@wkt")),
                     Source = new[] { MetadataFor(resource).Value<String>("@id")},
                     Modified = MetadataFor(resource).Value<DateTime>("@last-modified")
                 }

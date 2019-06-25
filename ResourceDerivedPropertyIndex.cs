@@ -13,38 +13,42 @@ namespace resource_etl
         public ResourceDerivedPropertyIndex()
         {
             AddMap<ResourceCluster>(clusters =>
-                from cluster in clusters.Where(r => r.Context == "@geohash" && r.Source.Skip(1).Any())
+                from cluster in clusters.Where(r => r.Source.Skip(1).Any())
                 let resources = LoadDocument<ResourceProperty>(cluster.Source).Where(r => r != null)
 
-                let comparisons = 
-                    from resource in resources
-                    let ontology = resource.Properties.Where(p => p.Name == "@ontology").SelectMany(p => p.Resources)
+                let comparisons =
+                    from resource in resources.Where(r => r.Context == cluster.Context)
+                    from property in resource.Properties.Where(p => p.Tags.Contains("@wkt"))
+
+                    let type = resource.Properties.Where(p => p.Name == "@type").SelectMany(p => p.Value).Distinct()
+                    where type.Any(t => cluster.ResourceId.StartsWith(t + "/" + property.Name + "/")) 
+
                     select new Resource
                     {
                         Context = resource.Context,
                         ResourceId = resource.ResourceId,
-                        Properties =
-                            from property in resource.Properties.Where(p => p.Tags.Contains("@wkt"))
-                            let propertyontology = ontology.SelectMany(r => r.Properties).Where(p => p.Name == property.Name)
-                            where propertyontology.Any()
-                            select new Property {
+                        Properties = new[] {
+                            new Property {
                                 Name = property.Name,
                                 Value = property.Value,
                                 Resources =
+                                    from propertyresource in property.Resources
                                     from resourcecompare in resources.Where(r => !(r.Context == resource.Context && r.ResourceId == resource.ResourceId))
-                                    let ontologyresources = propertyontology.SelectMany(p => p.Resources)
-                                    where ontologyresources.Any(r => r.Type.Any(t => resourcecompare.Properties.Where(p => p.Name == "@type").SelectMany(p => p.Value).Contains(t)))
+                                    let resourcecomparetype = resourcecompare.Properties.Where(p => p.Name == "@type").SelectMany(p => p.Value)
+                                    where propertyresource.Context == resourcecompare.Context && propertyresource.Type.Any(t => resourcecomparetype.Contains(t))
                                     select new Resource {
                                         Context = resourcecompare.Context,
                                         ResourceId = resourcecompare.ResourceId,
                                         Properties =
-                                            from propertycompare in resourcecompare.Properties.Where(p => p.Tags.Contains("@wkt"))
+                                            from compareproperty in resourcecompare.Properties
+                                            where propertyresource.Properties.Any(p => p.Name == compareproperty.Name)
                                             select new Property {
-                                                Name = propertycompare.Name,
-                                                Value = propertycompare.Value
+                                                Name = compareproperty.Name,
+                                                Value = compareproperty.Value
                                             }
                                     }
                             }
+                        }
                     }
 
                 from resource in (IEnumerable<Resource>)Intersects(comparisons)

@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Raven.Client.Documents.Indexes;
-using Raven.Client.Documents.Linq.Indexing;
 using static resource_etl.ResourceModel;
 using static resource_etl.ResourceModelUtils;
 
@@ -14,13 +13,31 @@ namespace resource_etl
         {
             AddMap<ResourceProperty>(resources =>
                 from resource in resources
-                from property in resource.Properties.Where(p => p.Tags.Contains("@wkt"))
+                from property in resource.Properties.Where(p => p.Tags.Contains("@wkt") && p.Tags.Contains("@cluster") && p.Tags.Any(t => t.StartsWith("@geohash")))
+                from type in resource.Properties.Where(p => p.Name == "@type").SelectMany(p => p.Value).Distinct()
                 from wkt in property.Value.Where(v => v != null)
-                from geohash in WKTEncodeGeohash(wkt, 5)
+                from geohash in WKTEncodeGeohash(wkt, 4)
                 select new Resource
                 {
-                    Context = "@geohash",
-                    ResourceId = geohash,
+                    Context = resource.Context,
+                    ResourceId = type + "/" + property.Name + "/" + geohash,
+                    Source = new[] { MetadataFor(resource).Value<String>("@id")},
+                    Modified = MetadataFor(resource).Value<DateTime>("@last-modified")
+                }
+            );
+
+            AddMap<ResourceProperty>(resources =>
+                from resource in resources
+                from property in resource.Properties.Where(p => p.Tags.Contains("@wkt") && p.Tags.Contains("@cluster") && p.Tags.Any(t => t.StartsWith("@geohash")))
+                from wkt in property.Value.Where(v => v != null)
+                from inverseproperty in property.Properties.Where(p => p.Tags.Contains("@inverse"))
+                from inverseresource in inverseproperty.Resources
+                from inverseresourcetype in inverseresource.Type
+                from geohash in WKTEncodeGeohash(wkt, 4)
+                select new Resource
+                {
+                    Context = inverseresource.Context,
+                    ResourceId = inverseresourcetype + "/" + inverseproperty.Name + "/" + geohash,
                     Source = new[] { MetadataFor(resource).Value<String>("@id")},
                     Modified = MetadataFor(resource).Value<DateTime>("@last-modified")
                 }

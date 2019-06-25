@@ -1,9 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using Raven.Client.Documents.Indexes;
-using Raven.Client.Documents.Linq.Indexing;
-using static resource_etl.ResourceModelUtils;
 
 namespace resource_etl
 {
@@ -43,6 +39,7 @@ namespace resource_etl
         public class ResourceMapped : Resource { }
         public class EnheterResource : ResourceMapped { }
         public class N50KartdataResource : ResourceMapped { }
+        public class MatrikkelenResource : ResourceMapped { }
 
         public static IEnumerable<Resource> Ontology =
             new Resource[] {

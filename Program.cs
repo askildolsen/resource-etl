@@ -1,10 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
+using Newtonsoft.Json;
 using Raven.Client.Documents;
 using Raven.Client.Documents.BulkInsert;
 using Raven.Client.Documents.Operations.Indexes;
 using Raven.Client.Json;
+using static resource_etl.ResourceModel;
 
 namespace resource_etl
 {
@@ -15,6 +18,7 @@ namespace resource_etl
             using (var store = new DocumentStore { Urls = new string[] { "http://localhost:8080" }, Database = "Digitalisert" })
             {
                 store.Conventions.FindCollectionName = t => t.Name;
+                store.Conventions.CustomizeJsonSerializer = s => s.NullValueHandling = NullValueHandling.Ignore;
                 store.Initialize();
 
                 var stopwatch = Stopwatch.StartNew();
@@ -26,7 +30,31 @@ namespace resource_etl
                         foreach(var type in resource.Type)
                         {
                             bulkInsert.Store(
-                                resource,
+                                new Resource {
+                                    Context = resource.Context,
+                                    Type = resource.Type,
+                                    Properties =
+                                        from property in resource.Properties
+                                        select new Property {
+                                            Name = property.Name,
+                                            Tags = property.Tags,
+                                            Resources = property.Resources,
+                                            Properties =
+                                                from inverseresource in ResourceModel.Ontology
+                                                from inverseproperty in inverseresource.Properties.Where(p => p.Resources != null)
+                                                from inversepropertyresource in inverseproperty.Resources.Where(r => r.Context == resource.Context && r.Type.Any(t => resource.Type.Contains(t)))
+                                                select new Property {
+                                                    Name = inverseproperty.Name,
+                                                    Tags = new[] { "@inverse" }.Union(inverseproperty.Tags ?? new string[] { }),
+                                                    Resources = new[] {
+                                                        new Resource {
+                                                            Context = inverseresource.Context,
+                                                            Type = inverseresource.Type
+                                                        }
+                                                    }
+                                                }
+                                        }
+                                },
                                 "ResourceOntology/" + resource.Context + "/" + type,
                                 new MetadataAsDictionary(new Dictionary<string, object> { { "@collection", "ResourceOntology"}})
                             );
