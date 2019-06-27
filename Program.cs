@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -43,6 +43,7 @@ namespace resource_etl
                                                 from inverseresource in ResourceModel.Ontology
                                                 from inverseproperty in inverseresource.Properties.Where(p => p.Resources != null)
                                                 from inversepropertyresource in inverseproperty.Resources.Where(r => r.Context == resource.Context && r.Type.Any(t => resource.Type.Contains(t)))
+                                                where inversepropertyresource.Properties != null && inversepropertyresource.Properties.Any(p => p.Name == property.Name)
                                                 select new Property {
                                                     Name = inverseproperty.Name,
                                                     Tags = new[] { "@inverse" }.Union(inverseproperty.Tags ?? new string[] { }),
