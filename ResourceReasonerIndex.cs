@@ -71,6 +71,7 @@ namespace resource_etl
                             Tags = propertyG.SelectMany(p => p.Tags).Distinct(),
                             Resources =
                                 from resource in propertyG.SelectMany(p => p.Resources)
+                                where resource.ResourceId != null
                                 group resource by new { resource.Context, resource.ResourceId } into resourceG
                                 select new Resource {
                                     Context = resourceG.Key.Context,
