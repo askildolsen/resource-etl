@@ -13,10 +13,11 @@ namespace resource_etl
         {
             AddMap<ResourceProperty>(resources =>
                 from resource in resources
-                from property in resource.Properties.Where(p => p.Tags.Contains("@wkt") && p.Tags.Contains("@cluster") && p.Tags.Any(t => t.StartsWith("@geohash")))
+                from property in resource.Properties.Where(p => p.Tags.Contains("@wkt") && p.Tags.Contains("@cluster") && p.Tags.Any(t => t.StartsWith("@geohash:")))
+                from precision in property.Tags.Where(t => t.StartsWith("@geohash:")).Select(t => t.Substring(t.IndexOf(":") + 1))
                 from type in resource.Properties.Where(p => p.Name == "@type").SelectMany(p => p.Value).Distinct()
                 from wkt in property.Value.Where(v => v != null)
-                from geohash in WKTEncodeGeohash(wkt, 4)
+                from geohash in WKTEncodeGeohash(wkt, Int16.Parse(precision))
                 select new Resource
                 {
                     Context = resource.Context,
@@ -28,12 +29,13 @@ namespace resource_etl
 
             AddMap<ResourceProperty>(resources =>
                 from resource in resources
-                from property in resource.Properties.Where(p => p.Tags.Contains("@wkt") && p.Tags.Contains("@cluster") && p.Tags.Any(t => t.StartsWith("@geohash")))
+                from property in resource.Properties.Where(p => p.Tags.Contains("@wkt"))
                 from wkt in property.Value.Where(v => v != null)
-                from inverseproperty in property.Properties.Where(p => p.Tags.Contains("@inverse"))
+                from inverseproperty in property.Properties.Where(p => p.Tags.Contains("@inverse") && p.Tags.Contains("@cluster") && p.Tags.Any(t => t.StartsWith("@geohash:")))
+                from precision in inverseproperty.Tags.Where(t => t.StartsWith("@geohash:")).Select(t => t.Substring(t.IndexOf(":") + 1))
                 from inverseresource in inverseproperty.Resources
                 from inverseresourcetype in inverseresource.Type
-                from geohash in WKTEncodeGeohash(wkt, 4)
+                from geohash in WKTEncodeGeohash(wkt, Int16.Parse(precision))
                 select new Resource
                 {
                     Context = inverseresource.Context,
