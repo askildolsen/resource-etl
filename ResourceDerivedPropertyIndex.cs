@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Raven.Client.Documents.Indexes;
-using Raven.Client.Documents.Linq.Indexing;
 using static resource_etl.ResourceModel;
 using static resource_etl.ResourceModelUtils;
 
@@ -16,48 +15,42 @@ namespace resource_etl
                 from cluster in clusters.Where(r => r.Source.Skip(1).Any())
                 let resources = LoadDocument<ResourceProperty>(cluster.Source).Where(r => r != null)
 
-                let comparisons =
-                    from resource in resources.Where(r => r.Context == cluster.Context)
-                    from property in resource.Properties.Where(p => p.Tags.Contains("@wkt"))
+                from resource in resources.Where(r => r.Context == cluster.Context)
+                from property in resource.Properties.Where(p => p.Tags.Contains("@wkt"))
 
-                    let type = resource.Properties.Where(p => p.Name == "@type").SelectMany(p => p.Value).Distinct()
-                    where type.Any(t => cluster.ResourceId.StartsWith(t + "/" + property.Name + "/")) 
+                let type = resource.Properties.Where(p => p.Name == "@type").SelectMany(p => p.Value).Distinct()
+                where type.Any(t => cluster.ResourceId.StartsWith(t + "/" + property.Name + "/"))
 
-                    select new Resource
-                    {
-                        Context = resource.Context,
-                        ResourceId = resource.ResourceId,
-                        Properties = new[] {
-                            new Property {
-                                Name = property.Name,
-                                Value = property.Value,
-                                Resources =
-                                    from propertyresource in property.Resources
-                                    from resourcecompare in resources.Where(r => !(r.Context == resource.Context && r.ResourceId == resource.ResourceId))
-                                    let resourcecomparetype = resourcecompare.Properties.Where(p => p.Name == "@type").SelectMany(p => p.Value)
-                                    where propertyresource.Context == resourcecompare.Context && propertyresource.Type.Any(t => resourcecomparetype.Contains(t))
-                                    select new Resource {
-                                        Context = resourcecompare.Context,
-                                        ResourceId = resourcecompare.ResourceId,
-                                        Properties =
-                                            from compareproperty in resourcecompare.Properties
-                                            where propertyresource.Properties.Any(p => p.Name == compareproperty.Name)
-                                            select new Property {
-                                                Name = compareproperty.Name,
-                                                Value = compareproperty.Value
-                                            }
-                                    }
-                            }
-                        }
-                    }
+                from value in property.Value.Select(v => WKTToGeometry(v))
 
-                from resource in (IEnumerable<Resource>)Intersects(comparisons)
+                from propertyresource in property.Resources
+                from resourcecompare in resources.Where(r => !(r.Context == resource.Context && r.ResourceId == resource.ResourceId))
+                let resourcecomparetype = resourcecompare.Properties.Where(p => p.Name == "@type").SelectMany(p => p.Value)
+                where propertyresource.Context == resourcecompare.Context && propertyresource.Type.Any(t => resourcecomparetype.Contains(t))
+
+                from compareproperty in resourcecompare.Properties.Where(p => p.Tags.Contains("@wkt"))
+                where propertyresource.Properties.Any(p => p.Name == compareproperty.Name)
+
+                from comparevalue in compareproperty.Value.Select(v => WKTToGeometry(v))
+                where GeometryIntersects(value, comparevalue)
+
                 select new Resource
                 {
                     Context = resource.Context,
                     ResourceId = resource.ResourceId,
-                    Properties = resource.Properties,
-                    Source = new string[] { },
+                    Properties = new[] {
+                        new Property {
+                            Name = property.Name,
+                            Value = property.Value,
+                            Resources = new[] {
+                                new Resource {
+                                    Context = resourcecompare.Context,
+                                    ResourceId = resourcecompare.ResourceId
+                                }
+                            }
+                        }
+                    },
+                    Source = new string[] { MetadataFor(cluster).Value<String>("@id") },
                     Modified = MetadataFor(cluster).Value<DateTime>("@last-modified")
                 }
             );
