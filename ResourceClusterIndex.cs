@@ -45,19 +45,6 @@ namespace resource_etl
                 }
             );
 
-            /*AddMap<ResourceProperty>(resources =>
-                from resource in resources
-                from property in resource.Properties.Where(p => new[] {"Adresse", "Postadresse", "Forretningsadresse", "Beliggenhetsadresse" }.Contains(p.Name))
-                where property.Value.Any()
-                select new Resource
-                {
-                    Context = "@address",
-                    ResourceId = String.Join('/', property.Value.ToArray()),
-                    Source = new[] { MetadataFor(resource).Value<String>("@id")},
-                    Modified = MetadataFor(resource).Value<DateTime>("@last-modified")
-                }
-            );*/
-
             Reduce = results =>
                 from result in results
                 group result by new { result.Context, result.ResourceId } into g
