@@ -13,8 +13,8 @@ namespace resource_etl
         {
             AddMap<ResourceProperty>(resources =>
                 from resource in resources
-                from property in resource.Properties.Where(p => p.Tags.Contains("@wkt") && p.Tags.Contains("@cluster") && p.Tags.Any(t => t.StartsWith("@geohash:")))
-                from precision in property.Tags.Where(t => t.StartsWith("@geohash:")).Select(t => t.Substring(t.IndexOf(":") + 1))
+                from property in resource.Properties.Where(p => p.Tags.Contains("@wkt") && p.Tags.Any(t => t.StartsWith("@cluster:geohash:")))
+                from precision in property.Tags.Where(t => t.StartsWith("@cluster:geohash:")).Select(t => t.Replace("@cluster:geohash:", ""))
                 from type in resource.Properties.Where(p => p.Name == "@type").SelectMany(p => p.Value).Distinct()
                 from wkt in property.Value.Where(v => v != null)
                 from geohash in WKTEncodeGeohash(wkt, Int16.Parse(precision))
@@ -31,8 +31,8 @@ namespace resource_etl
                 from resource in resources
                 from property in resource.Properties.Where(p => p.Tags.Contains("@wkt"))
                 from wkt in property.Value.Where(v => v != null)
-                from inverseproperty in property.Properties.Where(p => p.Tags.Contains("@inverse") && p.Tags.Contains("@cluster") && p.Tags.Any(t => t.StartsWith("@geohash:")))
-                from precision in inverseproperty.Tags.Where(t => t.StartsWith("@geohash:")).Select(t => t.Substring(t.IndexOf(":") + 1))
+                from inverseproperty in property.Properties.Where(p => p.Tags.Contains("@inverse") && p.Tags.Any(t => t.StartsWith("@cluster:geohash:")))
+                from precision in inverseproperty.Tags.Where(t => t.StartsWith("@cluster:geohash:")).Select(t => t.Replace("@cluster:geohash:", ""))
                 from inverseresource in inverseproperty.Resources
                 from inverseresourcetype in inverseresource.Type
                 from geohash in WKTEncodeGeohash(wkt, Int16.Parse(precision))
@@ -44,6 +44,19 @@ namespace resource_etl
                     Modified = MetadataFor(resource).Value<DateTime>("@last-modified")
                 }
             );
+
+            /*AddMap<ResourceProperty>(resources =>
+                from resource in resources
+                from property in resource.Properties.Where(p => new[] {"Adresse", "Postadresse", "Forretningsadresse", "Beliggenhetsadresse" }.Contains(p.Name))
+                where property.Value.Any()
+                select new Resource
+                {
+                    Context = "@address",
+                    ResourceId = String.Join('/', property.Value.ToArray()),
+                    Source = new[] { MetadataFor(resource).Value<String>("@id")},
+                    Modified = MetadataFor(resource).Value<DateTime>("@last-modified")
+                }
+            );*/
 
             Reduce = results =>
                 from result in results

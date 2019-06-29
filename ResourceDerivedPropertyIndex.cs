@@ -16,7 +16,7 @@ namespace resource_etl
                 let resources = LoadDocument<ResourceProperty>(cluster.Source).Where(r => r != null)
 
                 from resource in resources.Where(r => r.Context == cluster.Context)
-                from property in resource.Properties.Where(p => p.Tags.Contains("@wkt"))
+                from property in resource.Properties.Where(p => p.Tags.Contains("@wkt") && p.Tags.Any(t => t.StartsWith("@cluster:geohash:")))
 
                 let type = resource.Properties.Where(p => p.Name == "@type").SelectMany(p => p.Value).Distinct()
                 where type.Any(t => cluster.ResourceId.StartsWith(t + "/" + property.Name + "/"))

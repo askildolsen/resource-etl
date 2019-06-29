@@ -43,6 +43,80 @@ namespace resource_etl
 
         public static IEnumerable<Resource> Ontology =
             new Resource[] {
+                new Resource {
+                    Context = "N50Kartdata",
+                    Type = new[] { "Fylke" },
+                    Properties = new[] {
+                        new Property {
+                            Name = "Kommune"
+                        }
+                    }
+                },
+                new Resource {
+                    Context = "N50Kartdata",
+                    Type = new[] { "Kommune" },
+                    Properties = new[] {
+                        new Property {
+                            Name = "Område",
+                            Tags = new[] { "@cluster:geohash:4" },
+                            Resources = new[] {
+                                new Resource { Context = "N50Kartdata", Type = new[] { "Kommune" }, Properties = new[] { new Property { Name = "Område" } } },
+                                new Resource { Context = "N50Kartdata", Type = new[] { "Naturvernområde" }, Properties = new[] { new Property { Name = "Område" } } }
+                            }
+                        }
+                    }
+                },
+                new Resource {
+                    Context = "N50Kartdata",
+                    Type = new[] { "Naturvernområde" },
+                    Properties = new[] {
+                        new Property {
+                            Name = "Område",
+                            Tags = new[] { "@cluster:geohash:4" },
+                            Resources = new[] {
+                                new Resource { Context = "N50Kartdata", Type = new[] { "Kommune" }, Properties = new[] { new Property { Name = "Område" } } },
+                                new Resource { Context = "N50Kartdata", Type = new[] { "Naturvernområde" }, Properties = new[] { new Property { Name = "Område" } } }
+                            }
+                        }
+                    }
+                },
+                new Resource {
+                    Context = "N50Kartdata",
+                    Type = new[] { "Stedsnavn" },
+                    Properties = new[] {
+                        new Property {
+                            Name = "Geometri",
+                            Tags = new[] { "@cluster:geohash:5" },
+                            Resources = new[] {
+                                new Resource { Context = "N50Kartdata", Type = new[] { "Kommune" }, Properties = new[] { new Property { Name = "Område" } } }
+                            }
+                        }
+                    }
+                },
+                /*new Resource {
+                    Context = "Enheter",
+                    Type = new[] { "Enhet" },
+                    Properties = new[] {
+                        new Property {
+                            Name = "Forretningsadresse",
+                            Resources = new[] {
+                                new Resource { Context = "Matrikkelen", Type = new[] { "Vegadresse" }, Properties = new[] { new Property { Name = "Adresse" } }  }
+                            }
+                        }
+                    }
+                },
+                new Resource {
+                    Context = "Matrikkelen",
+                    Type = new[] { "Vegadresse" },
+                    Properties = new[] {
+                        new Property {
+                            Name = "Adresse",
+                            Resources = new[] {
+                                new Resource { Context = "Enheter", Type = new[] { "Enhet" } }
+                            }
+                        }
+                    }
+                }*/
             };
     }
 }
