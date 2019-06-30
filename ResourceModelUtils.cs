@@ -10,16 +10,16 @@ namespace resource_etl
         {
             var geometry = new NetTopologySuite.IO.WKTReader().Read(wkt);
 
-            var geohashsize = Spatial4n.Core.Util.GeohashUtils.DecodeBoundary(Spatial4n.Core.Util.GeohashUtils.EncodeLatLon(geometry.Coordinate.Y, geometry.Coordinate.X, precision), Spatial4n.Core.Context.SpatialContext.GEO);
+            var geohashsize = Spatial4n.Core.Util.GeohashUtils.LookupDegreesSizeForHashLen(precision);
 
             var shapeFactory = new NetTopologySuite.Utilities.GeometricShapeFactory();
-            shapeFactory.Width = geohashsize.GetWidth();
-            shapeFactory.Height = geohashsize.GetHeight();
+            shapeFactory.Height = geohashsize[0];
+            shapeFactory.Width = geohashsize[1];
             shapeFactory.NumPoints = 4;
 
-            for (double y = geometry.EnvelopeInternal.MinY; y <= geometry.EnvelopeInternal.MaxY; y += geohashsize.GetHeight())
+            for (double y = geometry.EnvelopeInternal.MinY - geohashsize[0]; y <= geometry.EnvelopeInternal.MaxY + geohashsize[0]; y += geohashsize[0])
             {
-                for (double x = geometry.EnvelopeInternal.MinX; x <= geometry.EnvelopeInternal.MaxX; x += geohashsize.GetWidth())
+                for (double x = geometry.EnvelopeInternal.MinX - geohashsize[1]; x <= geometry.EnvelopeInternal.MaxX + geohashsize[1]; x += geohashsize[1])
                 {
                     var geohash = Spatial4n.Core.Util.GeohashUtils.EncodeLatLon(y, x, precision);
                     var geohashdecoded = Spatial4n.Core.Util.GeohashUtils.Decode(geohash, Spatial4n.Core.Context.SpatialContext.GEO);
