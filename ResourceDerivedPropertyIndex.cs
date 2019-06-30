@@ -21,8 +21,6 @@ namespace resource_etl
                 let type = resource.Properties.Where(p => p.Name == "@type").SelectMany(p => p.Value).Distinct()
                 where type.Any(t => cluster.ResourceId.StartsWith(t + "/" + property.Name + "/"))
 
-                from value in property.Value.Select(v => WKTToGeometry(v))
-
                 from propertyresource in property.Resources
                 from resourcecompare in resources.Where(r => !(r.Context == resource.Context && r.ResourceId == resource.ResourceId))
                 let resourcecomparetype = resourcecompare.Properties.Where(p => p.Name == "@type").SelectMany(p => p.Value)
@@ -31,8 +29,7 @@ namespace resource_etl
                 from compareproperty in resourcecompare.Properties.Where(p => p.Tags.Contains("@wkt"))
                 where propertyresource.Properties.Any(p => p.Name == compareproperty.Name)
 
-                from comparevalue in compareproperty.Value.Select(v => WKTToGeometry(v))
-                where GeometryIntersects(value, comparevalue)
+                where property.Value.Any(v => compareproperty.Value.Any(cv => WKTIntersects(v, cv)))
 
                 select new Resource
                 {

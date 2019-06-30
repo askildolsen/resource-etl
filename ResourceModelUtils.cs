@@ -34,14 +34,10 @@ namespace resource_etl
             }
         }
 
-        public static GeoAPI.Geometries.IGeometry WKTToGeometry(string wkt)
+        public static bool WKTIntersects(string wkt1, string wkt2)
         {
-            return new NetTopologySuite.IO.WKTReader().Read(wkt);
-        }
-
-        public static bool GeometryIntersects(GeoAPI.Geometries.IGeometry geometry1, GeoAPI.Geometries.IGeometry geometry2)
-        {
-            return geometry1.Intersects(geometry2);
+            var wktreader = new NetTopologySuite.IO.WKTReader();
+            return wktreader.Read(wkt1).Intersects(wktreader.Read(wkt2));
         }
 
         public static string ReadResourceFile(string filename)
