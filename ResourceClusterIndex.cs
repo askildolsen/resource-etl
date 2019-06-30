@@ -70,7 +70,7 @@ namespace resource_etl
         public override IndexDefinition CreateIndexDefinition()
         {
             var indexDefinition = base.CreateIndexDefinition();
-            indexDefinition.Configuration = new IndexConfiguration { { "Indexing.MapBatchSize", "256"} };
+            indexDefinition.Configuration = new IndexConfiguration { { "Indexing.MapBatchSize", "128"} };
 
             return indexDefinition;
         }
