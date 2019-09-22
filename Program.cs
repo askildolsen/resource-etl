@@ -39,7 +39,7 @@ namespace resource_etl
                                             Name = property.Name,
                                             Tags = property.Tags,
                                             Resources = property.Resources,
-                                            Properties =
+                                            Properties = (property.Properties ?? new Property[] { }).Union(
                                                 from inverseresource in ResourceModel.Ontology
                                                 from inverseproperty in inverseresource.Properties.Where(p => p.Resources != null)
                                                 from inversepropertyresource in inverseproperty.Resources.Where(r => r.Context == resource.Context && r.Type.Any(t => resource.Type.Contains(t)))
@@ -54,6 +54,7 @@ namespace resource_etl
                                                         }
                                                     }
                                                 }
+                                            )
                                         }
                                 },
                                 "ResourceOntology/" + resource.Context + "/" + type,

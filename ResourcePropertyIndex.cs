@@ -21,9 +21,13 @@ namespace resource_etl
                     ResourceId = resource.ResourceId,
                     Properties = (
                         from ontologyproperty in ontology.SelectMany(r => r.Properties)
-                        from property in resource.Properties.Where(p => p.Name == ontologyproperty.Name)
+                        from property in (
+                            resource.Properties.Where(p => p.Name == ontologyproperty.Name)
+                        ).Union(
+                            resource.Properties.Where(p => ontologyproperty.Properties.Any(op => op.Name == p.Name))
+                        )
                         select new Property {
-                            Name = property.Name,
+                            Name = ontologyproperty.Name,
                             Value = property.Value.Union(ontologyproperty.Value).Distinct(),
                             Tags = property.Tags.Union(ontologyproperty.Tags).Distinct(),
                             Resources = (
