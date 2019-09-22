@@ -16,9 +16,9 @@ namespace resource_etl
                 let resources = LoadDocument<ResourceProperty>(cluster.Source).Where(r => r != null)
 
                 from resource in resources.Where(r => r.Context == cluster.Context)
+                let type = resource.Properties.Where(p => p.Name == "@type").SelectMany(p => p.Value).Distinct()
                 from property in resource.Properties.Where(p => p.Tags.Contains("@wkt") && p.Tags.Any(t => t.StartsWith("@cluster:geohash:")))
 
-                let type = resource.Properties.Where(p => p.Name == "@type").SelectMany(p => p.Value).Distinct()
                 where type.Any(t => cluster.ResourceId.StartsWith(t + "/" + property.Name + "/"))
 
                 from propertyresource in property.Resources
@@ -38,7 +38,6 @@ namespace resource_etl
                     Properties = new[] {
                         new Property {
                             Name = property.Name,
-                            Value = property.Value,
                             Resources = new[] {
                                 new Resource {
                                     Context = resourcecompare.Context,
@@ -47,7 +46,7 @@ namespace resource_etl
                             }
                         }
                     },
-                    Source = new string[] { MetadataFor(cluster).Value<String>("@id") },
+                    Source = new string[] { },
                     Modified = MetadataFor(cluster).Value<DateTime>("@last-modified")
                 }
             );
@@ -64,7 +63,6 @@ namespace resource_etl
                         group property by property.Name into propertyG
                         select new Property {
                             Name = propertyG.Key,
-                            Value = propertyG.SelectMany(p => p.Value).Distinct(),
                             Resources = propertyG.SelectMany(p => p.Resources).Distinct()
                         },
                     Source = g.SelectMany(resource => resource.Source).Distinct(),
