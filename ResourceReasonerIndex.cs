@@ -23,6 +23,32 @@ namespace resource_etl
                 }
             );
 
+            AddMap<ResourceProperty>(resources =>
+                from resource in resources
+                from property in resource.Properties
+                from inverseproperty in property.Properties.Where(p => p.Tags.Contains("@inverse"))
+                from inverseresource in property.Resources.Where(r => r.ResourceId != null)
+
+                select new Resource {
+                    Context = inverseresource.Context,
+                    ResourceId = inverseresource.ResourceId,
+                    Properties = new[] {
+                        new Property {
+                            Name = inverseproperty.Name,
+                            Value = property.Value,
+                            Resources = new[] {
+                                new Resource {
+                                    Context = resource.Context,
+                                    ResourceId = resource.ResourceId
+                                }
+                            }
+                        }
+                    },
+                    Source = new string[] { MetadataFor(resource).Value<String>("@id") },
+                    Modified = MetadataFor(resource).Value<DateTime>("@last-modified")
+                }
+            );
+
             AddMap<ResourceInverseProperty>(resources =>
                 from resource in resources
                 from inverseproperty in resource.Properties
