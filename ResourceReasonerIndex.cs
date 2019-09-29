@@ -61,8 +61,8 @@ namespace resource_etl
                 {
                     Context = g.Key.Context,
                     ResourceId = g.Key.ResourceId,
-                    Properties = 
-                        from property in g.SelectMany(r => r.Properties)
+                    Properties = (
+                        from property in g.SelectMany(r => r.Properties).Where(r => !r.Name.StartsWith("@"))
                         group property by property.Name into propertyG
                         select new Property {
                             Name = propertyG.Key,
@@ -79,7 +79,10 @@ namespace resource_etl
                                     Modified = resourceG.Select(r => r.Modified ?? DateTime.MinValue).Max(),
                                     Source = resourceG.SelectMany(r => r.Source).Distinct()
                                 }
-                        },
+                        }
+                    ).Union(
+                        g.SelectMany(r => r.Properties).Where(r => r.Name.StartsWith("@"))
+                    ),
                     Source = g.SelectMany(resource => resource.Source).Distinct(),
                     Modified = g.Select(resource => resource.Modified ?? DateTime.MinValue).Max()
                 };

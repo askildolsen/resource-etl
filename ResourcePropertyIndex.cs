@@ -43,6 +43,8 @@ namespace resource_etl
                             Properties = ontologyproperty.Properties
                         }
                     ).Union(
+                        ontology.SelectMany(r => r.Properties).Where(p => p.Name.StartsWith("@"))
+                    ).Union(
                         new[] {
                             new Property { Name = "@type", Value = resource.Type }
                         }

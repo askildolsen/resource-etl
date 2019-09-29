@@ -37,6 +37,7 @@ namespace resource_etl
                                         from property in resource.Properties
                                         select new Property {
                                             Name = property.Name,
+                                            Value = property.Value,
                                             Tags = property.Tags,
                                             Resources = property.Resources,
                                             Properties = (property.Properties ?? new Property[] { }).Union(
