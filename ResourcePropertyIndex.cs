@@ -25,6 +25,16 @@ namespace resource_etl
                             resource.Properties.Where(p => p.Name == ontologyproperty.Name)
                         ).Union(
                             resource.Properties.Where(p => ontologyproperty.Properties.Any(op => op.Name == p.Name))
+                        ).Union(
+                            from p in ontologyproperty.Properties.Where(op => op.Name.StartsWith("@"))
+                            from value in new[] { new { Name = "@code", Value = resource.Code } }
+                            where p.Name == value.Name
+                            select new Property {
+                                Value = value.Value,
+                                Tags = p.Tags,
+                                Resources = p.Resources,
+                                Properties = p.Properties
+                            }
                         )
                         select new Property {
                             Name = ontologyproperty.Name,
