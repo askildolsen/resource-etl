@@ -5,7 +5,6 @@ using System.Linq;
 using Newtonsoft.Json;
 using Raven.Client.Documents;
 using Raven.Client.Documents.BulkInsert;
-using Raven.Client.Documents.Operations.Indexes;
 using Raven.Client.Json;
 using static resource_etl.ResourceModel;
 
@@ -65,30 +64,11 @@ namespace resource_etl
                     }
                 }
 
-                if (store.Maintenance.Send(new GetIndexOperation("ResourcePropertyIndex")) == null)
-                {
-                    new ResourcePropertyIndex().Execute(store);
-                }
-
-                if (store.Maintenance.Send(new GetIndexOperation("ResourceClusterIndex")) == null)
-                {
-                    new ResourceClusterIndex().Execute(store);
-                }
-
-                if (store.Maintenance.Send(new GetIndexOperation("ResourceDerivedPropertyIndex")) == null)
-                {
-                    new ResourceDerivedPropertyIndex().Execute(store);
-                }
-
-                if (store.Maintenance.Send(new GetIndexOperation("ResourceInversePropertyIndex")) == null)
-                {
-                    new ResourceInversePropertyIndex().Execute(store);
-                }
-
-                if (store.Maintenance.Send(new GetIndexOperation("ResourceReasonerIndex")) == null)
-                {
-                    new ResourceReasonerIndex().Execute(store);
-                }
+                new ResourcePropertyIndex().Execute(store);
+                new ResourceClusterIndex().Execute(store);
+                new ResourceDerivedPropertyIndex().Execute(store);
+                new ResourceInversePropertyIndex().Execute(store);
+                new ResourceReasonerIndex().Execute(store);
 
                 stopwatch.Stop();
                 Console.WriteLine(stopwatch.Elapsed);

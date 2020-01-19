@@ -2,14 +2,12 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>netcoreapp2.2</TargetFramework>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
     <RootNamespace>resource_etl</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="RavenDB.Client" Version="4.2.3" />
-    <PackageReference Include="NetTopologySuite" Version="1.15.2" />
-    <PackageReference Include="Spatial4n.Core" Version="0.3.0" />
+    <PackageReference Include="RavenDB.Client" Version="4.2.6" />
   </ItemGroup>
 
   <ItemGroup>
