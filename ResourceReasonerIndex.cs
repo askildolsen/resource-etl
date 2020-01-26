@@ -17,40 +17,25 @@ namespace resource_etl
                 {
                     Context = resource.Context,
                     ResourceId = resource.ResourceId,
-                    Properties = resource.Properties,
-                    Source = resource.Source,
-                    Modified = resource.Modified ?? DateTime.MinValue
-                }
-            );
-
-            AddMap<ResourceInverseProperty>(resources =>
-                from resource in resources
-                from inverseproperty in resource.Properties
-                from inverseresource in LoadDocument<ResourceProperty>(inverseproperty.Source).Where(r => r != null)
-                select new Resource
-                {
-                    Context = inverseresource.Context,
-                    ResourceId = inverseresource.ResourceId,
-                    Properties = (
-                        from property in inverseresource.Properties
+                    Properties =
+                        from property in resource.Properties
                         select new Property
                         {
                             Name = property.Name,
                             Resources =
                                 from propertyresource in property.Resources
-                                where propertyresource.Context == resource.Context && propertyresource.ResourceId == resource.ResourceId
+                                let reduceoutputs = LoadDocument<ResourcePropertyReferences>("ResourceProperty/" + propertyresource.Context + "/" + propertyresource.ResourceId).ReduceOutputs
+                                let resourceoutputs = LoadDocument<ResourceProperty>(reduceoutputs)
                                 select new Resource
                                 {
                                     Context = propertyresource.Context,
                                     ResourceId = propertyresource.ResourceId,
-                                    Properties = new[] { new Property { Source = resource.Source.Where(s => s.StartsWith("Resource")) } },
-                                    Modified = resource.Modified,
-                                    Source = resource.Source.Where(s => !s.StartsWith("Resource"))
+                                    Modified = resourceoutputs.Select(r => r.Modified ?? DateTime.MinValue).Max(),
+                                    Source = resourceoutputs.SelectMany(r => r.Source).Distinct()
                                 }
-                        }
-                    ).Where(p => p.Resources.Any()),
-                    Source = new string[] { },
-                    Modified = null
+                        },
+                    Source = resource.Source,
+                    Modified = resource.Modified ?? DateTime.MinValue
                 }
             );
 
@@ -75,7 +60,6 @@ namespace resource_etl
                                 select new Resource {
                                     Context = resourceG.Key.Context,
                                     ResourceId = resourceG.Key.ResourceId,
-                                    Properties = resourceG.SelectMany(r => r.Properties).Distinct(),
                                     Modified = resourceG.Select(r => r.Modified ?? DateTime.MinValue).Max(),
                                     Source = resourceG.SelectMany(r => r.Source).Distinct()
                                 }

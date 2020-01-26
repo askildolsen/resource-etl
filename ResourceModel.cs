@@ -33,6 +33,10 @@ namespace resource_etl
 
         public class ResourceCluster : Resource { }
         public class ResourceProperty : Resource { }
+        public class ResourcePropertyReferences {
+            public string[] ReduceOutputs { get; set; }
+        }
+
         public class ResourceOntology : Resource { }
         public class ResourceDerivedProperty : ResourceProperty { }
         public class ResourceInverseProperty : Resource { }

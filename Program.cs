@@ -16,7 +16,7 @@ namespace resource_etl
         {
             using (var store = new DocumentStore { Urls = new string[] { "http://localhost:8080" }, Database = "Digitalisert" })
             {
-                store.Conventions.FindCollectionName = t => t.Name;
+                store.Conventions.FindCollectionName = t => t.Name.Replace("References", "/References");
                 store.Conventions.CustomizeJsonSerializer = s => s.NullValueHandling = NullValueHandling.Ignore;
                 store.Initialize();
 
@@ -67,7 +67,6 @@ namespace resource_etl
                 new ResourcePropertyIndex().Execute(store);
                 new ResourceClusterIndex().Execute(store);
                 new ResourceDerivedPropertyIndex().Execute(store);
-                new ResourceInversePropertyIndex().Execute(store);
                 new ResourceReasonerIndex().Execute(store);
 
                 stopwatch.Stop();
