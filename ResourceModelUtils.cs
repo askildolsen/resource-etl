@@ -4,9 +4,9 @@ namespace resource_etl
 {
     public class ResourceModelUtils
     {
-        public static IEnumerable<string> WKTEncodeGeohash(string wkt, int precision)
+        public static IEnumerable<string> WKTEncodeGeohash(string wkt)
         {
-            return Digitalisert.Raven.ResourceModelExtensions.WKTEncodeGeohash(wkt, precision);
+            return Digitalisert.Raven.ResourceModelExtensions.WKTEncodeGeohash(wkt);
         }
 
         public static bool WKTIntersects(string wkt1, string wkt2)

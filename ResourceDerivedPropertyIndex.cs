@@ -12,41 +12,39 @@ namespace resource_etl
         public ResourceDerivedPropertyIndex()
         {
             AddMap<ResourceCluster>(clusters =>
-                from cluster in clusters.Where(r => r.Source.Skip(1).Any())
-                let resources = LoadDocument<ResourceProperty>(cluster.Source).Where(r => r != null)
+                from cluster in clusters.Where(r => r.Context == "@geohash")
+                let parentClusters =
+                    from i in Enumerable.Range(1, cluster.ResourceId.Length)
+                    let parenthash = cluster.ResourceId.Substring(0, cluster.ResourceId.Length - i)
+                    where parenthash.Length > 0
+                    select LoadDocument<ResourceClusterReferences>("ResourceClusterReferences/@geohash/" + parenthash)
 
-                from resource in resources.Where(r => r.Context == cluster.Context)
-                let type = resource.Properties.Where(p => p.Name == "@type").SelectMany(p => p.Value).Distinct()
-                from property in resource.Properties.Where(p => p.Tags.Contains("@wkt") && p.Tags.Any(t => t.StartsWith("@cluster:geohash:")))
+                let parentOutputs = LoadDocument<ResourceCluster>(parentClusters.SelectMany(c => c.ReduceOutputs))
 
-                where type.Any(t => cluster.ResourceId.StartsWith(t + "/" + property.Name + "/"))
+                let resources = LoadDocument<ResourceProperty>(cluster.Source.Union(parentOutputs.SelectMany(p => p.Source))).Where(r => r != null)
 
-                from propertyresource in property.Resources
-                from resourcecompare in resources.Where(r => !(r.Context == resource.Context && r.ResourceId == resource.ResourceId))
-                let resourcecomparetype = resourcecompare.Properties.Where(p => p.Name == "@type").SelectMany(p => p.Value)
-                where propertyresource.Context == resourcecompare.Context && propertyresource.Type.Any(t => resourcecomparetype.Contains(t))
-
-                from compareproperty in resourcecompare.Properties.Where(p => p.Tags.Contains("@wkt"))
-                where propertyresource.Properties.Any(p => p.Name == compareproperty.Name)
-
-                where property.Value.Any(v => compareproperty.Value.Any(cv => WKTIntersects(v, cv)))
-
-                select new Resource
-                {
+                from resource in resources
+                select new Resource {
                     Context = resource.Context,
                     ResourceId = resource.ResourceId,
-                    Properties = new[] {
-                        new Property {
+                    Properties =
+                        from property in resource.Properties.Where(p => p.Tags.Contains("@cluster:geohash"))
+                        select new Property {
                             Name = property.Name,
-                            Resources = new[] {
-                                new Resource {
-                                    Context = resourcecompare.Context,
-                                    ResourceId = resourcecompare.ResourceId
-                                }
-                            }
-                        }
-                    },
-                    Source = new string[] { },
+                            Tags = property.Tags,
+                            Resources =
+                                from ontologyresource in property.Resources
+                                from resourcecompare in resources.Where(r => !(r.Context == resource.Context && r.ResourceId == resource.ResourceId))
+                                where ontologyresource.Context == resourcecompare.Context
+                                    && ontologyresource.Type.All(type => resourcecompare.Type.Contains(type))
+                                    && ontologyresource.Properties.Any(p1 => resourcecompare.Properties.Any(p2 => p1.Name == p2.Name))
+                                select
+                                    new Resource {
+                                        Context = resourcecompare.Context,
+                                        ResourceId = resourcecompare.ResourceId
+                                    }
+                        },
+                    Source = new string[] { MetadataFor(resource).Value<String>("@id") },
                     Modified = MetadataFor(cluster).Value<DateTime>("@last-modified")
                 }
             );
@@ -63,7 +61,6 @@ namespace resource_etl
                     Properties = new[] {
                         new Property {
                             Name = inverseproperty.Name,
-                            Value = property.Value,
                             Resources = new[] {
                                 new Resource {
                                     Context = resource.Context,
@@ -89,6 +86,7 @@ namespace resource_etl
                         group property by property.Name into propertyG
                         select new Property {
                             Name = propertyG.Key,
+                            Tags = propertyG.SelectMany(p => p.Tags).Distinct(),
                             Resources = propertyG.SelectMany(p => p.Resources).Distinct()
                         },
                     Source = g.SelectMany(resource => resource.Source).Distinct(),
@@ -112,7 +110,7 @@ namespace resource_etl
         public override IndexDefinition CreateIndexDefinition()
         {
             var indexDefinition = base.CreateIndexDefinition();
-            indexDefinition.Configuration = new IndexConfiguration { { "Indexing.MapBatchSize", "128"} };
+            indexDefinition.Configuration = new IndexConfiguration { { "Indexing.MapBatchSize", "8192"} };
 
             return indexDefinition;
         }

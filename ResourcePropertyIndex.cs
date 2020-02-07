@@ -19,6 +19,7 @@ namespace resource_etl
                 {
                     Context = context,
                     ResourceId = resource.ResourceId,
+                    Type = resource.Type,
                     Properties = (
                         from ontologyproperty in ontology.SelectMany(r => r.Properties)
                         from property in (
@@ -54,10 +55,6 @@ namespace resource_etl
                         }
                     ).Union(
                         ontology.SelectMany(r => r.Properties).Where(p => p.Name.StartsWith("@"))
-                    ).Union(
-                        new[] {
-                            new Property { Name = "@type", Value = resource.Type }
-                        }
                     ),
                     Source = new[] { MetadataFor(resource).Value<String>("@id")},
                     Modified = MetadataFor(resource).Value<DateTime>("@last-modified")
@@ -71,6 +68,7 @@ namespace resource_etl
                 {
                     Context = g.Key.Context,
                     ResourceId = g.Key.ResourceId,
+                    Type = g.SelectMany(r => r.Type).Distinct(),
                     Properties = g.SelectMany(resource => resource.Properties).Distinct(),
                     Source = g.SelectMany(resource => resource.Source).Distinct(),
                     Modified = g.Select(resource => resource.Modified).Max()
@@ -80,7 +78,7 @@ namespace resource_etl
             Store(r => r.Properties, FieldStorage.Yes);
 
             OutputReduceToCollection = "ResourceProperty";
-            PatternForOutputReduceToCollectionReferences = r => $"ResourceProperty/{r.Context}/{r.ResourceId}";
+            PatternForOutputReduceToCollectionReferences = r => $"ResourcePropertyReferences/{r.Context}/{r.ResourceId}";
 
             AdditionalSources = new Dictionary<string, string>
             {
@@ -94,7 +92,7 @@ namespace resource_etl
         public override IndexDefinition CreateIndexDefinition()
         {
             var indexDefinition = base.CreateIndexDefinition();
-            indexDefinition.Configuration = new IndexConfiguration { { "Indexing.MapBatchSize", "1024"} };
+            indexDefinition.Configuration = new IndexConfiguration { { "Indexing.MapBatchSize", "32768"} };
 
             return indexDefinition;
         }

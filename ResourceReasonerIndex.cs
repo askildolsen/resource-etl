@@ -11,7 +11,7 @@ namespace resource_etl
     {
         public ResourceReasonerIndex()
         {
-            AddMapForAll<ResourceProperty>(resources =>
+            AddMap<ResourceProperty>(resources =>
                 from resource in resources
                 select new Resource
                 {
@@ -24,8 +24,44 @@ namespace resource_etl
                             Name = property.Name,
                             Resources =
                                 from propertyresource in property.Resources
-                                let reduceoutputs = LoadDocument<ResourcePropertyReferences>("ResourceProperty/" + propertyresource.Context + "/" + propertyresource.ResourceId).ReduceOutputs
+                                let reduceoutputs = LoadDocument<ResourcePropertyReferences>("ResourcePropertyReferences/" + propertyresource.Context + "/" + propertyresource.ResourceId).ReduceOutputs
                                 let resourceoutputs = LoadDocument<ResourceProperty>(reduceoutputs)
+                                select new Resource
+                                {
+                                    Context = propertyresource.Context,
+                                    ResourceId = propertyresource.ResourceId,
+                                    Modified = resourceoutputs.Select(r => r.Modified ?? DateTime.MinValue).Max(),
+                                    Source = resourceoutputs.SelectMany(r => r.Source).Distinct()
+                                }
+                        },
+                    Source = resource.Source,
+                    Modified = resource.Modified ?? DateTime.MinValue
+                }
+            );
+
+            AddMap<ResourceDerivedProperty>(resources =>
+                from resource in resources.Where(r => r.Properties.Any(p => p.Tags.Contains("@cluster:geohash")))
+                let resourceproperties = LoadDocument<ResourceProperty>(resource.Source).Where(r => r != null)
+                select new Resource
+                {
+                    Context = resource.Context,
+                    ResourceId = resource.ResourceId,
+                    Properties =
+                        from property in resourceproperties.SelectMany(r => r.Properties).Where(p => p.Tags.Contains("@cluster:geohash"))
+                        select new Property
+                        {
+                            Name = property.Name,
+                            Resources =
+                                from derivedproperty in resource.Properties.Where(p => p.Name == property.Name)
+                                from propertyresource in derivedproperty.Resources
+                                let reduceoutputs = LoadDocument<ResourcePropertyReferences>("ResourcePropertyReferences/" + propertyresource.Context + "/" + propertyresource.ResourceId).ReduceOutputs
+                                let resourceoutputs = LoadDocument<ResourceProperty>(reduceoutputs)
+
+                                let comparepropertyname = property.Properties.Select(p => p.Name)
+                                let compareproperty = resourceoutputs.SelectMany(r => r.Properties.Where(p => comparepropertyname.Contains(p.Name)))
+
+                                where property.Value.Any(v => compareproperty.Any(cp => cp.Value.Any(cv => WKTIntersects(v, cv))))
+
                                 select new Resource
                                 {
                                     Context = propertyresource.Context,

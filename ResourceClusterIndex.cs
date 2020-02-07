@@ -13,33 +13,13 @@ namespace resource_etl
         {
             AddMap<ResourceProperty>(resources =>
                 from resource in resources
-                from property in resource.Properties.Where(p => p.Tags.Contains("@wkt") && p.Tags.Any(t => t.StartsWith("@cluster:geohash:")))
-                from precision in property.Tags.Where(t => t.StartsWith("@cluster:geohash:")).Select(t => t.Replace("@cluster:geohash:", ""))
-                from type in resource.Properties.Where(p => p.Name == "@type").SelectMany(p => p.Value).Distinct()
+                from property in resource.Properties.Where(p => p.Tags.Contains("@cluster:geohash") && p.Tags.Contains("@wkt"))
                 from wkt in property.Value.Where(v => v != null)
-                from geohash in WKTEncodeGeohash(wkt, Int16.Parse(precision))
+                from geohash in WKTEncodeGeohash(wkt)
                 select new Resource
                 {
-                    Context = resource.Context,
-                    ResourceId = type + "/" + property.Name + "/" + geohash,
-                    Source = new[] { MetadataFor(resource).Value<String>("@id")},
-                    Modified = MetadataFor(resource).Value<DateTime>("@last-modified")
-                }
-            );
-
-            AddMap<ResourceProperty>(resources =>
-                from resource in resources
-                from property in resource.Properties.Where(p => p.Tags.Contains("@wkt"))
-                from wkt in property.Value.Where(v => v != null)
-                from inverseproperty in property.Properties.Where(p => p.Tags.Contains("@inverse") && p.Tags.Any(t => t.StartsWith("@cluster:geohash:")))
-                from precision in inverseproperty.Tags.Where(t => t.StartsWith("@cluster:geohash:")).Select(t => t.Replace("@cluster:geohash:", ""))
-                from inverseresource in inverseproperty.Resources
-                from inverseresourcetype in inverseresource.Type
-                from geohash in WKTEncodeGeohash(wkt, Int16.Parse(precision))
-                select new Resource
-                {
-                    Context = inverseresource.Context,
-                    ResourceId = inverseresourcetype + "/" + inverseproperty.Name + "/" + geohash,
+                    Context = "@geohash",
+                    ResourceId = geohash,
                     Source = new[] { MetadataFor(resource).Value<String>("@id")},
                     Modified = MetadataFor(resource).Value<DateTime>("@last-modified")
                 }
@@ -57,6 +37,7 @@ namespace resource_etl
                 };
 
             OutputReduceToCollection = "ResourceCluster";
+            PatternForOutputReduceToCollectionReferences = r => $"ResourceClusterReferences/{r.Context}/{r.ResourceId}";
 
             AdditionalSources = new Dictionary<string, string>
             {
@@ -70,7 +51,7 @@ namespace resource_etl
         public override IndexDefinition CreateIndexDefinition()
         {
             var indexDefinition = base.CreateIndexDefinition();
-            indexDefinition.Configuration = new IndexConfiguration { { "Indexing.MapBatchSize", "128"} };
+            indexDefinition.Configuration = new IndexConfiguration { { "Indexing.MapBatchSize", "1024"} };
 
             return indexDefinition;
         }

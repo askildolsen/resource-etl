@@ -5,7 +5,7 @@ namespace Digitalisert.Raven
 {
     public static class ResourceModelExtensions
     {
-        public static IEnumerable<string> WKTEncodeGeohash(string wkt, int precision)
+        public static IEnumerable<string> WKTEncodeGeohash(string wkt)
         {
             throw new NotSupportedException("This method is provided solely to allow query translation on the server");
         }
