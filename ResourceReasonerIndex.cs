@@ -57,7 +57,7 @@ namespace resource_etl
                                 let reduceoutputs = LoadDocument<ResourcePropertyReferences>("ResourcePropertyReferences/" + propertyresource.Context + "/" + propertyresource.ResourceId).ReduceOutputs
                                 let resourceoutputs = LoadDocument<ResourceProperty>(reduceoutputs)
 
-                                let comparepropertyname = property.Properties.Select(p => p.Name)
+                                let comparepropertyname = property.Resources.SelectMany(r => r.Properties).Select(p => p.Name)
                                 let compareproperty = resourceoutputs.SelectMany(r => r.Properties.Where(p => comparepropertyname.Contains(p.Name)))
 
                                 where property.Value.Any(v => compareproperty.Any(cp => cp.Value.Any(cv => WKTIntersects(v, cv))))
