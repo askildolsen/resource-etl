@@ -39,6 +39,33 @@ namespace resource_etl
                 }
             );
 
+            AddMap<ResourceProperty>(resources =>
+                from resource in resources
+                from property in resource.Properties.Where(p => p.Properties.Any(p => p.Tags.Contains("@inverse")))
+                from propertyresource in property.Resources.Where(r => r.ResourceId != null)
+                from inverseproperty in property.Properties.Where(p => p.Tags.Contains("@inverse"))
+
+                select new Resource {
+                    Context = propertyresource.Context,
+                    ResourceId = propertyresource.ResourceId,
+                    Properties = new[] {
+                        new Property {
+                            Name = inverseproperty.Name,
+                            Resources = new[] {
+                                new Resource {
+                                    Context = resource.Context,
+                                    ResourceId = resource.ResourceId,
+                                    Modified = resource.Modified,
+                                    Source = resource.Source
+                                }
+                            }
+                        }
+                    },
+                    Source = new string[] { },
+                    Modified = DateTime.MinValue
+                }
+            );
+
             AddMap<ResourceDerivedProperty>(resources =>
                 from resource in resources.Where(r => r.Properties.Any(p => p.Tags.Contains("@cluster:geohash")))
                 let resourceproperties = LoadDocument<ResourceProperty>(resource.Source).Where(r => r != null)
