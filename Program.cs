@@ -57,13 +57,14 @@ namespace resource_etl
                                             )
                                         }
                                 },
-                                "ResourceOntology/" + resource.Context + "/" + type,
-                                new MetadataAsDictionary(new Dictionary<string, object> { { "@collection", "ResourceOntology"}})
+                                "OntologyResource/" + resource.Context + "/" + type,
+                                new MetadataAsDictionary(new Dictionary<string, object> { { "@collection", "OntologyResource"}})
                             );
                         }
                     }
                 }
 
+                new ResourceOntologyIndex().Execute(store);
                 new ResourcePropertyIndex().Execute(store);
                 new ResourceClusterIndex().Execute(store);
                 new ResourceDerivedPropertyIndex().Execute(store);

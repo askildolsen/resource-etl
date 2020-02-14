@@ -4,6 +4,11 @@ namespace resource_etl
 {
     public class ResourceModelUtils
     {
+        public static string GenerateHash(string key)
+        {
+            return Digitalisert.Raven.ResourceModelExtensions.GenerateHash(key);
+        }
+
         public static IEnumerable<string> WKTEncodeGeohash(string wkt)
         {
             return Digitalisert.Raven.ResourceModelExtensions.WKTEncodeGeohash(wkt);

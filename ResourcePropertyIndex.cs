@@ -11,17 +11,16 @@ namespace resource_etl
     {
         public ResourcePropertyIndex()
         {
-            AddMapForAll<ResourceMapped>(resources =>
-                from resource in resources
-                let context = MetadataFor(resource).Value<String>("@collection").Replace("Resource", "")
-                let ontology = resource.Type.Select(t => LoadDocument<ResourceOntology>("ResourceOntology/" + context + "/" + t)).Where(r => r != null)
+            AddMap<ResourceOntology>(ontologies =>
+                from ontology in ontologies
+                from resource in LoadDocument<ResourceMapped>(ontology.Source).Where(r => r != null)
                 select new Resource
                 {
-                    Context = context,
+                    Context = ontology.Context,
                     ResourceId = resource.ResourceId,
                     Type = resource.Type,
                     Properties = (
-                        from ontologyproperty in ontology.SelectMany(r => r.Properties)
+                        from ontologyproperty in ontology.Properties
                         from property in (
                             resource.Properties.Where(p => p.Name == ontologyproperty.Name)
                         ).Union(
@@ -44,7 +43,7 @@ namespace resource_etl
                             Resources = (
                                 from propertyresource in property.Resources.Where(r => r.ResourceId != null)
                                 select new Resource {
-                                    Context = context,
+                                    Context = ontology.Context,
                                     ResourceId = propertyresource.ResourceId
                                 }
                             ).Union(
@@ -54,7 +53,7 @@ namespace resource_etl
                             Properties = ontologyproperty.Properties
                         }
                     ).Union(
-                        ontology.SelectMany(r => r.Properties).Where(p => p.Name.StartsWith("@"))
+                        ontology.Properties.Where(p => p.Name.StartsWith("@"))
                     ),
                     Source = new[] { MetadataFor(resource).Value<String>("@id")},
                     Modified = MetadataFor(resource).Value<DateTime>("@last-modified")
@@ -92,7 +91,7 @@ namespace resource_etl
         public override IndexDefinition CreateIndexDefinition()
         {
             var indexDefinition = base.CreateIndexDefinition();
-            indexDefinition.Configuration = new IndexConfiguration { { "Indexing.MapBatchSize", "32768"} };
+            indexDefinition.Configuration = new IndexConfiguration { { "Indexing.MapBatchSize", "128"} };
 
             return indexDefinition;
         }
