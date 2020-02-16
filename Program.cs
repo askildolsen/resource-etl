@@ -33,7 +33,7 @@ namespace resource_etl
                                     Context = resource.Context,
                                     Type = resource.Type,
                                     Properties =
-                                        from property in resource.Properties
+                                        from property in resource.Properties ?? new Property[] { }
                                         select new Property {
                                             Name = property.Name,
                                             Value = property.Value,
@@ -41,7 +41,7 @@ namespace resource_etl
                                             Resources = property.Resources,
                                             Properties = (property.Properties ?? new Property[] { }).Union(
                                                 from inverseresource in ResourceModel.Ontology
-                                                from inverseproperty in inverseresource.Properties.Where(p => p.Resources != null)
+                                                from inverseproperty in (inverseresource.Properties ?? new Property[] { }).Where(p => p.Resources != null)
                                                 from inversepropertyresource in inverseproperty.Resources.Where(r => r.Context == resource.Context && r.Type.Any(t => resource.Type.Contains(t)))
                                                 where inversepropertyresource.Properties != null && inversepropertyresource.Properties.Any(p => p.Name == property.Name)
                                                 select new Property {
