@@ -19,9 +19,10 @@ namespace resource_etl
                     where parenthash.Length > 0
                     select LoadDocument<ResourceClusterReferences>("ResourceClusterReferences/@geohash/" + parenthash)
 
-                let parentOutputs = LoadDocument<ResourceCluster>(parentClusters.SelectMany(c => c.ReduceOutputs))
+                let parentOutputs = LoadDocument<ResourceCluster>(parentClusters.Where(r => r != null).SelectMany(c => c.ReduceOutputs).Distinct()).Where(r => r != null)
 
-                let resources = LoadDocument<ResourceProperty>(cluster.Source.Union(parentOutputs.SelectMany(p => p.Source))).Where(r => r != null)
+                let resources = LoadDocument<ResourceProperty>(cluster.Source.Union(parentOutputs.SelectMany(p => p.Source)).Distinct()).Where(r => r != null)
+                where resources.Take(1).Any()
 
                 from resource in resources
                 select new Resource {
