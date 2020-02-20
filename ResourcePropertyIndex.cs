@@ -41,14 +41,39 @@ namespace resource_etl
                             Value = property.Value.Union(ontologyproperty.Value).Distinct(),
                             Tags = property.Tags.Union(ontologyproperty.Tags).Distinct(),
                             Resources = (
-                                from propertyresource in property.Resources.Where(r => r.ResourceId != null)
+                                from propertyresource in property.Resources.Where(r => r.ResourceId != null && !ontologyproperty.Resources.Any())
                                 select new Resource {
                                     Context = ontology.Context,
                                     ResourceId = propertyresource.ResourceId
                                 }
                             ).Union(
                                 from ontologyresource in ontologyproperty.Resources
-                                select ontologyresource
+                                from outputresource in
+
+                                    (ontologyresource.ResourceId == "*") ?
+                                        from propertyresource in property.Resources.Where(r => r.ResourceId != null)
+                                        select new Resource {
+                                            Context = ontologyresource.Context,
+                                            ResourceId = propertyresource.ResourceId
+                                        }
+
+                                    : (ontologyresource.Properties.Any(p => p.Name == "@resourceId")) ?
+                                        from resourceIdProperty in ontologyresource.Properties.Where(p => p.Name == "@resourceId")
+                                        from propertyresource in property.Resources
+                                        where resourceIdProperty.Resources.Any(r => r.Type.All(type => propertyresource.Type.Contains(type)))
+                                        let resourceId =
+                                            from resourceIdValue in resourceIdProperty.Value
+                                            select (!resourceIdValue.StartsWith("@")) ? resourceIdValue :
+                                                propertyresource.Code.First()
+                                        where resourceId.Any()
+                                        select new Resource {
+                                            Context = ontologyresource.Context,
+                                            ResourceId = String.Join("", resourceId)
+                                        }
+
+                                    : new[] { ontologyresource }
+
+                                select outputresource
                             ),
                             Properties = ontologyproperty.Properties
                         }
