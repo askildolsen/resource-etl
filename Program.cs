@@ -42,7 +42,7 @@ namespace resource_etl
                                             Properties = (property.Properties ?? new Property[] { }).Union(
                                                 from inverseresource in ResourceModel.Ontology
                                                 from inverseproperty in (inverseresource.Properties ?? new Property[] { }).Where(p => p.Resources != null)
-                                                from inversepropertyresource in inverseproperty.Resources.Where(r => r.Context == resource.Context && r.Type.Any(t => resource.Type.Contains(t)))
+                                                from inversepropertyresource in inverseproperty.Resources.Where(r => r.Context == resource.Context && (r.Type ?? new string[] { }).Any(t => resource.Type.Contains(t)))
                                                 where inversepropertyresource.Properties != null && inversepropertyresource.Properties.Any(p => p.Name == property.Name)
                                                 select new Property {
                                                     Name = inverseproperty.Name,
