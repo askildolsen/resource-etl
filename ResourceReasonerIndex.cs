@@ -11,6 +11,19 @@ namespace resource_etl
     {
         public ResourceReasonerIndex()
         {
+            AddMap<ResourceOntology>(ontologies =>
+                from ontology in ontologies
+                from resource in LoadDocument<ResourceMapped>(ontology.Source).Where(r => r != null)
+                select new Resource
+                {
+                    Context = ontology.Context,
+                    ResourceId = resource.ResourceId,
+                    Properties = new Property[] { },
+                    Source = new[] { MetadataFor(resource).Value<String>("@id")},
+                    Modified = MetadataFor(resource).Value<DateTime>("@last-modified")
+                }
+            );
+
             AddMap<ResourceProperty>(resources =>
                 from resource in resources
                 select new Resource
