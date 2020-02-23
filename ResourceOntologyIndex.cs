@@ -14,11 +14,13 @@ namespace resource_etl
             AddMapForAll<ResourceMapped>(resources =>
                 from resource in resources.Where(r => MetadataFor(r).Value<String>("@collection").EndsWith("Resource"))
                 let context = MetadataFor(resource).Value<String>("@collection").Replace("Resource", "")
-                from ontology in resource.Type.Select(t => LoadDocument<OntologyResource>("OntologyResource/" + context + "/" + t)).Where(r => r != null)
+                from type in resource.Type
+                let ontology = LoadDocument<OntologyResource>("OntologyResource/" + context + "/" + type)
+                where ontology != null
                 select new Resource
                 {
                     Context = context,
-                    ResourceId = GenerateHash(resource.ResourceId),
+                    ResourceId = type + "/" + GenerateHash(resource.ResourceId),
                     Properties = ontology.Properties,
                     Source = new[] { MetadataFor(resource).Value<String>("@id") },
                     Modified = MetadataFor(resource).Value<DateTime>("@last-modified")
