@@ -19,6 +19,9 @@ namespace resource_etl
                     Context = ontology.Context,
                     ResourceId = resource.ResourceId,
                     Type = resource.Type,
+                    SubType = resource.SubType,
+                    Status = resource.Status,
+                    Tags = resource.Tags,
                     Properties = (
                         from ontologyproperty in ontology.Properties
                         from property in (
@@ -93,6 +96,9 @@ namespace resource_etl
                     Context = g.Key.Context,
                     ResourceId = g.Key.ResourceId,
                     Type = g.SelectMany(r => r.Type).Distinct(),
+                    SubType = g.SelectMany(r => r.SubType).Distinct(),
+                    Status = g.SelectMany(r => r.Status).Distinct(),
+                    Tags = g.SelectMany(r => r.Tags).Distinct(),
                     Properties = g.SelectMany(resource => resource.Properties).Distinct(),
                     Source = g.SelectMany(resource => resource.Source).Distinct(),
                     Modified = g.Select(resource => resource.Modified).Max()
