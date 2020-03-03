@@ -13,38 +13,52 @@ namespace resource_etl
         {
             AddMap<ResourceCluster>(clusters =>
                 from cluster in clusters.Where(r => r.Context == "@geohash")
-                let parentClusters =
+                let parentclusters =
                     from i in Enumerable.Range(1, cluster.ResourceId.Length)
                     let parenthash = cluster.ResourceId.Substring(0, cluster.ResourceId.Length - i)
                     where parenthash.Length > 0
                     select LoadDocument<ResourceClusterReferences>("ResourceClusterReferences/@geohash/" + parenthash)
 
-                let parentOutputs = LoadDocument<ResourceCluster>(parentClusters.Where(r => r != null).SelectMany(c => c.ReduceOutputs).Distinct()).Where(r => r != null)
+                let parentclustersources = LoadDocument<ResourceCluster>(parentclusters.Where(r => r != null).SelectMany(c => c.ReduceOutputs).Distinct()).Where(r => r != null)
 
-                let resources = LoadDocument<ResourceProperty>(cluster.Source.Union(parentOutputs.SelectMany(p => p.Source)).Distinct()).Where(r => r != null)
-                where resources.Take(1).Any()
+                let clusterresources = LoadDocument<ResourceProperty>(cluster.Source).Where(r => r != null)
+                let parentclusterresources = LoadDocument<ResourceProperty>(parentclustersources.SelectMany(p => p.Source).Distinct()).Where(r => r != null)
 
-                from resource in resources
+                where clusterresources.Skip(1).Any() || parentclusterresources.Any()
+
+                let comparisons = new[] {
+                    new { resources = clusterresources, resourcescompare = clusterresources },
+                    new { resources = clusterresources, resourcescompare = parentclusterresources },
+                    new { resources = parentclusterresources, resourcescompare = clusterresources}
+                }
+
+                from compare in comparisons
+                from resource in compare.resources
+
+                let derivedproperties =
+                    from property in resource.Properties.Where(p => p.Tags.Contains("@cluster:geohash"))
+                    select new Property {
+                        Name = property.Name,
+                        Tags = property.Tags,
+                        Resources =
+                            from ontologyresource in property.Resources
+                            from resourcecompare in compare.resourcescompare.Where(r => !(r.Context == resource.Context && r.ResourceId == resource.ResourceId))
+                            where ontologyresource.Context == resourcecompare.Context
+                                && ontologyresource.Type.All(type => resourcecompare.Type.Contains(type))
+                                && ontologyresource.Properties.Any(p1 => resourcecompare.Properties.Any(p2 => p1.Name == p2.Name))
+                            select
+                                new Resource {
+                                    Context = resourcecompare.Context,
+                                    ResourceId = resourcecompare.ResourceId
+                                }
+                    }
+
+                where derivedproperties.Any(p => p.Resources.Any())
+
                 select new Resource {
                     Context = resource.Context,
                     ResourceId = resource.ResourceId,
-                    Properties =
-                        from property in resource.Properties.Where(p => p.Tags.Contains("@cluster:geohash"))
-                        select new Property {
-                            Name = property.Name,
-                            Tags = property.Tags,
-                            Resources =
-                                from ontologyresource in property.Resources
-                                from resourcecompare in resources.Where(r => !(r.Context == resource.Context && r.ResourceId == resource.ResourceId))
-                                where ontologyresource.Context == resourcecompare.Context
-                                    && ontologyresource.Type.All(type => resourcecompare.Type.Contains(type))
-                                    && ontologyresource.Properties.Any(p1 => resourcecompare.Properties.Any(p2 => p1.Name == p2.Name))
-                                select
-                                    new Resource {
-                                        Context = resourcecompare.Context,
-                                        ResourceId = resourcecompare.ResourceId
-                                    }
-                        },
+                    Properties = derivedproperties.Where(p => p.Resources.Any()),
                     Source = new string[] { MetadataFor(resource).Value<String>("@id") },
                     Modified = MetadataFor(cluster).Value<DateTime>("@last-modified")
                 }
