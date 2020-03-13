@@ -40,25 +40,22 @@ namespace resource_etl
                     select new Property {
                         Name = property.Name,
                         Tags = property.Tags,
-                        Resources =
+                        Source =
                             from ontologyresource in property.Resources
                             from resourcecompare in compare.resourcescompare.Where(r => !(r.Context == resource.Context && r.ResourceId == resource.ResourceId))
                             where ontologyresource.Context == resourcecompare.Context
                                 && ontologyresource.Type.All(type => resourcecompare.Type.Contains(type))
                                 && ontologyresource.Properties.Any(p1 => resourcecompare.Properties.Any(p2 => p1.Name == p2.Name))
                             select
-                                new Resource {
-                                    Context = resourcecompare.Context,
-                                    ResourceId = resourcecompare.ResourceId
-                                }
+                                MetadataFor(resourcecompare).Value<String>("@id")
                     }
 
-                where derivedproperties.Any(p => p.Resources.Any())
+                where derivedproperties.Any(p => p.Source.Any())
 
                 select new Resource {
                     Context = resource.Context,
                     ResourceId = resource.ResourceId,
-                    Properties = derivedproperties.Where(p => p.Resources.Any()),
+                    Properties = derivedproperties.Where(p => p.Source.Any()),
                     Source = new string[] { MetadataFor(resource).Value<String>("@id") },
                     Modified = MetadataFor(cluster).Value<DateTime>("@last-modified")
                 }
@@ -77,7 +74,7 @@ namespace resource_etl
                         select new Property {
                             Name = propertyG.Key,
                             Tags = propertyG.SelectMany(p => p.Tags).Distinct(),
-                            Resources = propertyG.SelectMany(p => p.Resources).Distinct()
+                            Source = propertyG.SelectMany(p => p.Source).Distinct()
                         },
                     Source = g.SelectMany(resource => resource.Source).Distinct(),
                     Modified = g.Select(resource => resource.Modified).Max()

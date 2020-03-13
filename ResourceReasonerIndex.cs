@@ -104,12 +104,10 @@ namespace resource_etl
                             Name = property.Name,
                             Resources =
                                 from derivedproperty in resource.Properties.Where(p => p.Name == property.Name)
-                                from propertyresource in derivedproperty.Resources
-                                let reduceoutputs = LoadDocument<ResourcePropertyReferences>("ResourcePropertyReferences/" + propertyresource.Context + "/" + propertyresource.ResourceId).ReduceOutputs
-                                let resourceoutputs = LoadDocument<ResourceProperty>(reduceoutputs)
+                                from propertyresource in LoadDocument<ResourceProperty>(derivedproperty.Source).Where(r => r != null)
 
                                 let comparepropertyname = property.Resources.SelectMany(r => r.Properties).Select(p => p.Name)
-                                let compareproperty = resourceoutputs.SelectMany(r => r.Properties.Where(p => comparepropertyname.Contains(p.Name)))
+                                let compareproperty = propertyresource.Properties.Where(p => comparepropertyname.Contains(p.Name))
 
                                 where property.Value.Any(v => compareproperty.Any(cp => cp.Value.Any(cv => WKTIntersects(v, cv))))
 
@@ -117,15 +115,15 @@ namespace resource_etl
                                 {
                                     Context = propertyresource.Context,
                                     ResourceId = propertyresource.ResourceId,
-                                    Type = resourceoutputs.SelectMany(r => r.Type).Distinct(),
-                                    SubType = resourceoutputs.SelectMany(r => r.SubType).Distinct(),
-                                    Status = resourceoutputs.SelectMany(r => r.Status).Distinct(),
-                                    Tags = resourceoutputs.SelectMany(r => r.Tags).Distinct(),
-                                    Modified = resourceoutputs.Select(r => r.Modified ?? DateTime.MinValue).Max(),
-                                    Source = resourceoutputs.SelectMany(r => r.Source).Distinct()
+                                    Type = propertyresource.Type,
+                                    SubType = propertyresource.SubType,
+                                    Status = propertyresource.Status,
+                                    Tags = propertyresource.Tags,
+                                    Modified = propertyresource.Modified ?? DateTime.MinValue,
+                                    Source = propertyresource.Source
                                 }
                         },
-                    Source = resource.Source,
+                    Source = new string[] { },
                     Modified = resource.Modified ?? DateTime.MinValue
                 }
             );
