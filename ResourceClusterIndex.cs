@@ -13,7 +13,7 @@ namespace resource_etl
         {
             AddMap<ResourceProperty>(resources =>
                 from resource in resources
-                from property in resource.Properties.Where(p => p.Tags.Contains("@cluster:geohash") && p.Tags.Contains("@wkt"))
+                from property in resource.Properties.Where(p => p.Tags.Contains("@wkt"))
                 from wkt in property.Value.Where(v => v != null)
                 from geohash in WKTEncodeGeohash(wkt)
                 select new Resource

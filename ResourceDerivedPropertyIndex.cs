@@ -36,7 +36,7 @@ namespace resource_etl
                 from resource in compare.resources
 
                 let derivedproperties =
-                    from property in resource.Properties.Where(p => p.Tags.Contains("@cluster:geohash"))
+                    from property in resource.Properties.Where(p => p.Tags.Contains("@wkt"))
                     select new Property {
                         Name = property.Name,
                         Tags = property.Tags,

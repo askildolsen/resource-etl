@@ -87,7 +87,7 @@ namespace resource_etl
             );
 
             AddMap<ResourceDerivedProperty>(resources =>
-                from resource in resources.Where(r => r.Properties.Any(p => p.Tags.Contains("@cluster:geohash")))
+                from resource in resources.Where(r => r.Properties.Any(p => p.Tags.Contains("@wkt")))
                 let resourceproperties = LoadDocument<ResourceProperty>(resource.Source).Where(r => r != null)
                 select new Resource
                 {
@@ -98,7 +98,7 @@ namespace resource_etl
                     Status = new string[] {},
                     Tags = new string[] {},
                     Properties =
-                        from property in resourceproperties.SelectMany(r => r.Properties).Where(p => p.Tags.Contains("@cluster:geohash"))
+                        from property in resourceproperties.SelectMany(r => r.Properties).Where(p => p.Tags.Contains("@wkt"))
                         select new Property
                         {
                             Name = property.Name,
