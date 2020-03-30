@@ -23,7 +23,7 @@ namespace resource_etl
                     Status = resource.Status,
                     Tags = resource.Tags,
                     Properties = (
-                        from ontologyproperty in ontology.Properties
+                        from ontologyproperty in ontology.Properties.Where(p => !p.Name.StartsWith("@"))
                         from property in (
                             resource.Properties.Where(p => p.Name == ontologyproperty.Name)
                         ).Union(
