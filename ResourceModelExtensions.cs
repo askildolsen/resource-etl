@@ -1,10 +1,15 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace Digitalisert.Raven
 {
     public static class ResourceModelExtensions
     {
+        public static IEnumerable<dynamic> Properties(IEnumerable<dynamic> properties, dynamic resource)
+        {
+            throw new NotSupportedException("This method is provided solely to allow query translation on the server");
+        }
+
         public static string GenerateHash(string key)
         {
             throw new NotSupportedException("This method is provided solely to allow query translation on the server");

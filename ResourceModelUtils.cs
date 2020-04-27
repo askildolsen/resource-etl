@@ -4,6 +4,11 @@ namespace resource_etl
 {
     public class ResourceModelUtils
     {
+        public static IEnumerable<dynamic> Properties(IEnumerable<dynamic> properties, dynamic resource)
+        {
+            return Digitalisert.Raven.ResourceModelExtensions.Properties(properties, resource);
+        }
+
         public static string GenerateHash(string key)
         {
             return Digitalisert.Raven.ResourceModelExtensions.GenerateHash(key);
