@@ -22,16 +22,16 @@ namespace resource_etl
                     SubType = resource.SubType,
                     Status = resource.Status,
                     Tags = resource.Tags,
-                    Properties =
+                    Properties = (IEnumerable<Property>)Properties(
                         from ontologyproperty in ontology.Properties
                         let property = resource.Properties.Where(p => p.Name == ontologyproperty.Name)
                         select new Property {
-                            Name = ontologyproperty.Name,
-                            Value = property.SelectMany(p => p.Value).Union(ontologyproperty.Value).Distinct(),
-                            Tags = property.SelectMany(p => p.Tags).Union(ontologyproperty.Tags).Distinct(),
+                            Name = ontologyproperty.Name.ToString(),
+                            Value = property.SelectMany(p => p.Value).Union(ontologyproperty.Value).Select(v => v.ToString()).Distinct(),
+                            Tags = property.SelectMany(p => p.Tags).Union(ontologyproperty.Tags).Select(v => v.ToString()).Distinct(),
                             Resources = property.SelectMany(p => p.Resources).Union(ontologyproperty.Resources),
                             Properties = property.SelectMany(p => p.Properties).Union(ontologyproperty.Properties)
-                        },
+                        }, resource, ontology.Context),
                     Source = new[] { MetadataFor(resource).Value<String>("@id")},
                     Modified = MetadataFor(resource).Value<DateTime>("@last-modified")
                 }
@@ -48,7 +48,7 @@ namespace resource_etl
                     SubType = g.SelectMany(r => r.SubType).Distinct(),
                     Status = g.SelectMany(r => r.Status).Distinct(),
                     Tags = g.SelectMany(r => r.Tags).Distinct(),
-                    Properties = (IEnumerable<Property>)Properties(g.SelectMany(r => r.Properties), g.First()),
+                    Properties = g.SelectMany(r => r.Properties),
                     Source = g.SelectMany(r => r.Source).Distinct(),
                     Modified = g.Select(r => r.Modified).Max()
                 };
