@@ -133,19 +133,15 @@ namespace resource_etl
                 group result by new { result.Context, result.ResourceId } into g
 
                 let computedProperties =
-                    from computedProperty in g.SelectMany(r => r.Properties).Where(p => p.Name.StartsWith("@"))
-                    let compare =
-                        from criteriaproperty in computedProperty.Properties
-                        from criteriaresource in criteriaproperty.Resources
-                        from propertycompare in g.SelectMany(r => r.Properties).Where(p => p.Name == criteriaproperty.Name)
-                        from resourcecompare in propertycompare.Resources
-                        where criteriaresource.Context == resourcecompare.Context
-                            && criteriaresource.Type.All(type => resourcecompare.Type.Contains(type))
-                            && criteriaresource.SubType.All(subtype => resourcecompare.SubType.Contains(subtype))
-                            && criteriaresource.Status.All(status => resourcecompare.Status.Contains(status))
-                        select resourcecompare
-                    where compare.Any()
-                    select new Property { Name = computedProperty.Name, Value = computedProperty.Value }
+                    from property in g.SelectMany(r => r.Properties).Where(p => p.Name.StartsWith("@"))
+                    select new Property {
+                        Name = property.Name,
+                        Value = (
+                            from value in property.Value
+                            from resource in g.ToList()
+                            select ResourceFormat(value, resource)
+                        ).Where(v => !String.IsNullOrWhiteSpace(v))
+                    }
 
                 select new Resource
                 {

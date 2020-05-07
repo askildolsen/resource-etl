@@ -9,6 +9,11 @@ namespace resource_etl
             return Digitalisert.Raven.ResourceModelExtensions.Properties(properties, resource, context);
         }
 
+        public static string ResourceFormat(string value, dynamic resource)
+        {
+            return Digitalisert.Raven.ResourceModelExtensions.ResourceFormat(value, resource);
+        }
+
         public static string GenerateHash(string key)
         {
             return Digitalisert.Raven.ResourceModelExtensions.GenerateHash(key);
