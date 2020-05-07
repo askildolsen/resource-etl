@@ -28,7 +28,7 @@ namespace resource_etl
                             Name = property.Name,
                             Value = property.Value,
                             Resources =
-                                from propertyresource in property.Resources
+                                from propertyresource in property.Resources.Where(r => r.ResourceId != null)
                                 let reduceoutputs = LoadDocument<ResourcePropertyReferences>("ResourcePropertyReferences/" + propertyresource.Context + "/" + propertyresource.ResourceId).ReduceOutputs
                                 let resourceoutputs = LoadDocument<ResourceProperty>(reduceoutputs)
                                 select new Resource
@@ -164,7 +164,6 @@ namespace resource_etl
                             Tags = propertyG.SelectMany(p => p.Tags).Distinct(),
                             Resources =
                                 from resource in propertyG.SelectMany(p => p.Resources)
-                                where resource.ResourceId != null
                                 group resource by new { resource.Context, resource.ResourceId } into resourceG
                                 select new Resource {
                                     Context = resourceG.Key.Context,
