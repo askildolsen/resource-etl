@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 
 namespace Digitalisert.Raven
@@ -21,6 +21,11 @@ namespace Digitalisert.Raven
         }
 
         public static IEnumerable<string> WKTEncodeGeohash(string wkt)
+        {
+            throw new NotSupportedException("This method is provided solely to allow query translation on the server");
+        }
+
+        public static string WKTDecodeGeohash(string geohash)
         {
             throw new NotSupportedException("This method is provided solely to allow query translation on the server");
         }

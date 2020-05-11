@@ -151,23 +151,50 @@ namespace resource_etl
                 }
             );
 
-                                select new Resource
-                                {
-                                    Context = propertyresource.Context,
-                                    ResourceId = propertyresource.ResourceId,
-                                    Type = propertyresource.Type,
-                                    SubType = propertyresource.SubType,
-                                    Title = propertyresource.Title,
-                                    SubTitle = propertyresource.SubTitle,
-                                    Code = propertyresource.Code,
-                                    Status = propertyresource.Status,
-                                    Tags = propertyresource.Tags,
-                                    Modified = propertyresource.Modified ?? DateTime.MinValue,
-                                    Source = propertyresource.Source
-                                }
-                        },
+            AddMap<ResourceCluster>(clusters =>
+                from cluster in clusters.Where(r => r.Context == "@geohash")
+                let resourceproperties = LoadDocument<ResourceProperty>(cluster.Source).Where(r => r != null)
+                select new Resource
+                {
+                    Context = cluster.Context,
+                    ResourceId = cluster.ResourceId,
+                    Type = new string[] {},
+                    SubType = new string[] {},
+                    Title = new string[] {},
+                    SubTitle = new string[] {},
+                    Code = new string[] {},
+                    Status = new string[] {},
+                    Tags = new string[] {},
+                    Properties = (
+                        new[] {
+                            new Property {
+                                Name = "Geohash",
+                                Value = new[] { WKTDecodeGeohash(cluster.ResourceId) },
+                                Tags = new[] { "@wkt" }
+                            }
+                        }
+                    ).Union(
+                        new[] {
+                            new Property {
+                                Name = "References",
+                                Resources =
+                                    from propertyresource in resourceproperties
+                                    select new Resource
+                                    {
+                                        Context = propertyresource.Context,
+                                        ResourceId = propertyresource.ResourceId,
+                                        Type = propertyresource.Type,
+                                        SubType = propertyresource.SubType,
+                                        Status = propertyresource.Status,
+                                        Tags = propertyresource.Tags,
+                                        Modified = propertyresource.Modified ?? DateTime.MinValue,
+                                        Source = propertyresource.Source
+                                    }
+                            }
+                        }
+                    ),
                     Source = new string[] { },
-                    Modified = resource.Modified ?? DateTime.MinValue
+                    Modified = cluster.Modified ?? DateTime.MinValue
                 }
             );
 
