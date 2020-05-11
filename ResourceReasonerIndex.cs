@@ -259,6 +259,7 @@ namespace resource_etl
             Store(r => r.Properties, FieldStorage.Yes);
 
             OutputReduceToCollection = "Resource";
+            PatternForOutputReduceToCollectionReferences = r => $"ResourceReferences/{r.Context}/{r.ResourceId}";
 
             AdditionalSources = new Dictionary<string, string>
             {
