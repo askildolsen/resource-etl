@@ -100,7 +100,7 @@ namespace resource_etl
 
             AddMap<ResourceDerivedProperty>(resources =>
                 from resource in resources.Where(r => r.Properties.Any(p => p.Tags.Contains("@wkt")))
-                let resourceproperties = LoadDocument<ResourceProperty>(resource.Source).Where(r => r != null)
+                let rp = LoadDocument<ResourceProperty>(resource.Source)
                 select new Resource
                 {
                     Context = resource.Context,
@@ -113,18 +113,43 @@ namespace resource_etl
                     Status = new string[] {},
                     Tags = new string[] {},
                     Properties =
-                        from property in resourceproperties.SelectMany(r => r.Properties).Where(p => p.Tags.Contains("@wkt"))
+                        from property in resource.Properties.Where(p => p.Tags.Contains("@wkt"))
                         select new Property
                         {
                             Name = property.Name,
                             Resources =
-                                from derivedproperty in resource.Properties.Where(p => p.Name == property.Name)
-                                from propertyresource in LoadDocument<ResourceProperty>(derivedproperty.Source).Where(r => r != null)
+                                from propertyresourcereferences in LoadDocument<ResourceDerivedPropertyReferences>(property.Source)
+                                from propertyresource in LoadDocument<ResourceDerivedProperty>(propertyresourcereferences.ReduceOutputs)
 
-                                let comparepropertyname = property.Resources.SelectMany(r => r.Properties).Select(p => p.Name)
-                                let compareproperty = propertyresource.Properties.Where(p => comparepropertyname.Contains(p.Name))
+                                where property.Value.Any(v => propertyresource.Properties.Any(cp => cp.Value.Any(cv => WKTIntersects(v, cv))))
 
-                                where property.Value.Any(v => compareproperty.Any(cp => cp.Value.Any(cv => WKTIntersects(v, cv))))
+                                let resourceproperty = LoadDocument<ResourceProperty>(propertyresource.Source)
+
+                                where rp.SelectMany(r => r.Properties.Where(p => p.Name == resource.Name)).SelectMany(p => p.Value).Any(v =>
+                                    resourceproperty.SelectMany(r => r.Properties.Where(p => p.Name == propertyresource.Name)).SelectMany(p => p.Value).Any(cv =>
+                                        WKTIntersects(v, cv)
+                                    )
+                                )
+
+                                select new Resource
+                                {
+                                    Context = propertyresource.Context,
+                                    ResourceId = propertyresource.ResourceId,
+                                    Type = resourceproperty.SelectMany(r => r.Type).Distinct(),
+                                    SubType = resourceproperty.SelectMany(r => r.SubType).Distinct(),
+                                    Title = resourceproperty.SelectMany(r => r.Title).Distinct(),
+                                    SubTitle = resourceproperty.SelectMany(r => r.SubTitle).Distinct(),
+                                    Code = resourceproperty.SelectMany(r => r.Code).Distinct(),
+                                    Status = resourceproperty.SelectMany(r => r.Status).Distinct(),
+                                    Tags = resourceproperty.SelectMany(r => r.Tags).Distinct(),
+                                    Modified = resourceproperty.Select(r => r.Modified ?? DateTime.MinValue).Max(),
+                                    Source = resourceproperty.SelectMany(r => r.Source).Distinct()
+                                }
+                        },
+                    Source = new string[] { },
+                    Modified = resource.Modified ?? DateTime.MinValue
+                }
+            );
 
                                 select new Resource
                                 {

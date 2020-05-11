@@ -24,6 +24,11 @@ namespace resource_etl
             return Digitalisert.Raven.ResourceModelExtensions.WKTEncodeGeohash(wkt);
         }
 
+        public static string WKTEnvelope(string wkt)
+        {
+            return Digitalisert.Raven.ResourceModelExtensions.WKTEnvelope(wkt);
+        }
+
         public static bool WKTIntersects(string wkt1, string wkt2)
         {
             return Digitalisert.Raven.ResourceModelExtensions.WKTIntersects(wkt1, wkt2);
