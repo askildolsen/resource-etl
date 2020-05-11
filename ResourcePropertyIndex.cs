@@ -42,16 +42,28 @@ namespace resource_etl
             Reduce = results =>
                 from result in results
                 group result by new { result.Context, result.ResourceId } into g
+
+                let computedProperties =
+                    from property in g.SelectMany(r => r.Properties).Where(p => p.Name.StartsWith("@"))
+                    select new Property {
+                        Name = property.Name,
+                        Value = (
+                            from value in property.Value
+                            from resource in g.ToList()
+                            select ResourceFormat(value, resource)
+                        ).Where(v => !String.IsNullOrWhiteSpace(v))
+                    }
+
                 select new Resource {
                     Context = g.Key.Context,
                     ResourceId = g.Key.ResourceId,
-                    Type = g.SelectMany(r => r.Type).Distinct(),
-                    SubType = g.SelectMany(r => r.SubType).Distinct(),
-                    Title = g.SelectMany(r => r.Title).Distinct(),
-                    SubTitle = g.SelectMany(r => r.SubTitle).Distinct(),
-                    Code = g.SelectMany(r => r.Code).Distinct(),
-                    Status = g.SelectMany(r => r.Status).Distinct(),
-                    Tags = g.SelectMany(r => r.Tags).Distinct(),
+                    Type = g.SelectMany(r => r.Type).Union(computedProperties.Where(p => p.Name == "@type").SelectMany(p => p.Value)).Select(v => v.ToString()).Distinct(),
+                    SubType = g.SelectMany(r => r.SubType).Union(computedProperties.Where(p => p.Name == "@subtype").SelectMany(p => p.Value)).Select(v => v.ToString()).Distinct(),
+                    Title = g.SelectMany(r => r.Title).Union(computedProperties.Where(p => p.Name == "@title").SelectMany(p => p.Value)).Select(v => v.ToString()).Distinct(),
+                    SubTitle = g.SelectMany(r => r.SubTitle).Union(computedProperties.Where(p => p.Name == "@subtitle").SelectMany(p => p.Value)).Select(v => v.ToString()).Distinct(),
+                    Code = g.SelectMany(r => r.Code).Union(computedProperties.Where(p => p.Name == "@code").SelectMany(p => p.Value)).Select(v => v.ToString()).Distinct(),
+                    Status = g.SelectMany(r => r.Status).Union(computedProperties.Where(p => p.Name == "@status").SelectMany(p => p.Value)).Select(v => v.ToString()).Distinct(),
+                    Tags = g.SelectMany(r => r.Tags).Union(computedProperties.Where(p => p.Name == "@tags").SelectMany(p => p.Value)).Select(v => v.ToString()).Distinct(),
                     Properties = g.SelectMany(r => r.Properties),
                     Source = g.SelectMany(r => r.Source).Distinct(),
                     Modified = g.Select(r => r.Modified).Max()
