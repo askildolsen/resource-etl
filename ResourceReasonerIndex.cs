@@ -45,7 +45,6 @@ namespace resource_etl
                                     Code = resourceoutputs.SelectMany(r => r.Code).Distinct(),
                                     Status = resourceoutputs.SelectMany(r => r.Status).Distinct(),
                                     Tags = resourceoutputs.SelectMany(r => r.Tags).Distinct(),
-                                    Modified = resourceoutputs.Select(r => r.Modified ?? DateTime.MinValue).Max(),
                                     Source = resourceoutputs.SelectMany(r => r.Source).Distinct()
                                 }
                         }
@@ -79,6 +78,7 @@ namespace resource_etl
                             Resources = new[] {
                                 new Resource {
                                     Context = resource.Context,
+                                    ResourceId = resource.ResourceId,
                                     Type = resource.Type,
                                     SubType = resource.SubType,
                                     Title = resource.Title,
@@ -86,8 +86,6 @@ namespace resource_etl
                                     Code = resource.Code,
                                     Status = resource.Status,
                                     Tags = resource.Tags,
-                                    ResourceId = resource.ResourceId,
-                                    Modified = resource.Modified,
                                     Source = resource.Source
                                 }
                             }
@@ -142,7 +140,6 @@ namespace resource_etl
                                     Code = resourceproperty.SelectMany(r => r.Code).Distinct(),
                                     Status = resourceproperty.SelectMany(r => r.Status).Distinct(),
                                     Tags = resourceproperty.SelectMany(r => r.Tags).Distinct(),
-                                    Modified = resourceproperty.Select(r => r.Modified ?? DateTime.MinValue).Max(),
                                     Source = resourceproperty.SelectMany(r => r.Source).Distinct()
                                 }
                         },
@@ -187,7 +184,6 @@ namespace resource_etl
                                         SubType = propertyresource.SubType,
                                         Status = propertyresource.Status,
                                         Tags = propertyresource.Tags,
-                                        Modified = propertyresource.Modified ?? DateTime.MinValue,
                                         Source = propertyresource.Source
                                     }
                             }
@@ -244,7 +240,6 @@ namespace resource_etl
                                     Code = resourceG.SelectMany(r => r.Code).Distinct(),
                                     Status = resourceG.SelectMany(r => r.Status).Distinct(),
                                     Tags = resourceG.SelectMany(r => r.Tags).Distinct(),
-                                    Modified = resourceG.Select(r => r.Modified ?? DateTime.MinValue).Max(),
                                     Source = resourceG.SelectMany(r => r.Source).Distinct()
                                 }
                         }
