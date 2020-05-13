@@ -109,7 +109,7 @@ namespace resource_etl
                     SubTitle = new string[] {},
                     Code = new string[] {},
                     Status = new string[] {},
-                    Tags = new string[] {},
+                    Tags = new[] { "@wkt" },
                     Properties =
                         from property in resource.Properties.Where(p => p.Tags.Contains("@wkt"))
                         select new Property
@@ -159,9 +159,9 @@ namespace resource_etl
                     SubType = new string[] {},
                     Title = new string[] {},
                     SubTitle = new string[] {},
-                    Code = new string[] {},
+                    Code = new[] { cluster.ResourceId },
                     Status = new string[] {},
-                    Tags = new string[] {},
+                    Tags = new[] { "@wkt" },
                     Properties = (
                         new[] {
                             new Property {
