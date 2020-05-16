@@ -97,8 +97,22 @@ namespace resource_etl
             );
 
             AddMap<ResourceDerivedProperty>(resources =>
-                from resource in resources.Where(r => r.Properties.Any(p => p.Tags.Contains("@wkt")))
-                let rp = LoadDocument<ResourceProperty>(resource.Source)
+                from resource in resources
+                from derivedproperty in resource.Properties.Where(p => p.Tags.Contains("@wkt"))
+                
+                let propertyresourcereferences = LoadDocument<ResourceDerivedPropertyReferences>(derivedproperty.Source)
+                let derivedresourceproperties =
+                    from propertyresource in LoadDocument<ResourceDerivedProperty>(propertyresourcereferences.SelectMany(r => r.ReduceOutputs))
+                    where derivedproperty.Value.Any(v => propertyresource.Properties.Any(cp => cp.Value.Any(cv => WKTIntersects(v, cv))))
+                    select propertyresource
+
+                where derivedresourceproperties.Any()
+
+                let compareresources = LoadDocument<ResourceProperty>(derivedresourceproperties.SelectMany(r => r.Source))
+
+                from resourceproperty in LoadDocument<ResourceProperty>(resource.Source)
+                from property in resourceproperty.Properties.Where(p => p.Name == resource.Name)
+
                 select new Resource
                 {
                     Context = resource.Context,
@@ -110,39 +124,32 @@ namespace resource_etl
                     Code = new string[] {},
                     Status = new string[] {},
                     Tags = new[] { "@wkt" },
-                    Properties =
-                        from property in resource.Properties.Where(p => p.Tags.Contains("@wkt"))
-                        select new Property
+                    Properties = new[] {
+                        new Property
                         {
                             Name = property.Name,
                             Resources =
-                                from propertyresourcereferences in LoadDocument<ResourceDerivedPropertyReferences>(property.Source)
-                                from propertyresource in LoadDocument<ResourceDerivedProperty>(propertyresourcereferences.ReduceOutputs)
+                                from derivedresourceproperty in derivedresourceproperties
+                                from derivedresourcesource in derivedresourceproperty.Source
+                                from compareresourceproperty in compareresources.Where(r => derivedresourcesource == MetadataFor(r).Value<String>("@id"))
+                                from compareresourcevalue in compareresourceproperty.Properties.Where(p => p.Name == derivedresourceproperty.Name)
 
-                                where property.Value.Any(v => propertyresource.Properties.Any(cp => cp.Value.Any(cv => WKTIntersects(v, cv))))
+                                where property.Value.Any(v => compareresourcevalue.Value.Any(cv => WKTIntersects(v, cv)))
 
-                                let resourceproperty = LoadDocument<ResourceProperty>(propertyresource.Source)
-
-                                where rp.SelectMany(r => r.Properties.Where(p => p.Name == resource.Name)).SelectMany(p => p.Value).Any(v =>
-                                    resourceproperty.SelectMany(r => r.Properties.Where(p => p.Name == propertyresource.Name)).SelectMany(p => p.Value).Any(cv =>
-                                        WKTIntersects(v, cv)
-                                    )
-                                )
-
-                                select new Resource
-                                {
-                                    Context = propertyresource.Context,
-                                    ResourceId = propertyresource.ResourceId,
-                                    Type = resourceproperty.SelectMany(r => r.Type).Distinct(),
-                                    SubType = resourceproperty.SelectMany(r => r.SubType).Distinct(),
-                                    Title = resourceproperty.SelectMany(r => r.Title).Distinct(),
-                                    SubTitle = resourceproperty.SelectMany(r => r.SubTitle).Distinct(),
-                                    Code = resourceproperty.SelectMany(r => r.Code).Distinct(),
-                                    Status = resourceproperty.SelectMany(r => r.Status).Distinct(),
-                                    Tags = resourceproperty.SelectMany(r => r.Tags).Distinct(),
-                                    Source = resourceproperty.SelectMany(r => r.Source).Distinct()
+                                select new Resource {
+                                    Context = compareresourceproperty.Context,
+                                    ResourceId = compareresourceproperty.ResourceId,
+                                    Type = compareresourceproperty.Type,
+                                    SubType = compareresourceproperty.SubType,
+                                    Title = compareresourceproperty.Title,
+                                    SubTitle = compareresourceproperty.SubTitle,
+                                    Code = compareresourceproperty.Code,
+                                    Status = compareresourceproperty.Status,
+                                    Tags = compareresourceproperty.Tags,
+                                    Source = compareresourceproperty.Source
                                 }
-                        },
+                        }
+                    },
                     Source = new string[] { },
                     Modified = resource.Modified ?? DateTime.MinValue
                 }
