@@ -39,6 +39,11 @@ namespace resource_etl
             return Digitalisert.Raven.ResourceModelExtensions.WKTIntersects(wkt1, wkt2);
         }
 
+        public static IEnumerable<dynamic> WKTIntersectingProperty(IEnumerable<dynamic> wkts, IEnumerable<dynamic> properties)
+        {
+            return Digitalisert.Raven.ResourceModelExtensions.WKTIntersectingProperty(wkts, properties);
+        }
+
         public static string ReadResourceFile(string filename)
         {
             var assembly = System.Reflection.Assembly.GetExecutingAssembly();

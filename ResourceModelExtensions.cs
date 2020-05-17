@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace Digitalisert.Raven
@@ -31,6 +31,11 @@ namespace Digitalisert.Raven
         }
 
         public static string WKTEnvelope(string wkt)
+        {
+            throw new NotSupportedException("This method is provided solely to allow query translation on the server");
+        }
+
+        public static IEnumerable<dynamic> WKTIntersectingProperty(IEnumerable<dynamic> wkts, IEnumerable<dynamic> properties)
         {
             throw new NotSupportedException("This method is provided solely to allow query translation on the server");
         }

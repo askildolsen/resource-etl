@@ -129,12 +129,19 @@ namespace resource_etl
                         {
                             Name = property.Name,
                             Resources =
-                                from derivedresourceproperty in derivedresourceproperties
-                                from derivedresourcesource in derivedresourceproperty.Source
-                                from compareresourceproperty in compareresources.Where(r => derivedresourcesource == MetadataFor(r).Value<String>("@id"))
-                                from compareresourcevalue in compareresourceproperty.Properties.Where(p => p.Name == derivedresourceproperty.Name)
+                                from intersectingproperty in (IEnumerable<Property>)WKTIntersectingProperty(property.Value,
+                                    from derivedresourceproperty in derivedresourceproperties
+                                    from derivedresourcesource in derivedresourceproperty.Source
+                                    from compareresourceproperty in compareresources.Where(r => derivedresourcesource == MetadataFor(r).Value<String>("@id"))
+                                    from compareresourcevalue in compareresourceproperty.Properties.Where(p => p.Name == derivedresourceproperty.Name)
+                                    select new Property {
+                                        Value = compareresourcevalue.Value.Select(v => v.ToString()),
+                                        Source = new[] { derivedresourcesource }
+                                    }
+                                )
 
-                                where property.Value.Any(v => compareresourcevalue.Value.Any(cv => WKTIntersects(v, cv)))
+                                from intersectingsource in intersectingproperty.Source
+                                from compareresourceproperty in compareresources.Where(r => intersectingsource == MetadataFor(r).Value<String>("@id")) 
 
                                 select new Resource {
                                     Context = compareresourceproperty.Context,
