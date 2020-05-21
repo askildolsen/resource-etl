@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 
 namespace Digitalisert.Raven
@@ -10,7 +10,7 @@ namespace Digitalisert.Raven
             throw new NotSupportedException("This method is provided solely to allow query translation on the server");
         }
 
-        public static string ResourceFormat(string value, dynamic resource)
+        public static IEnumerable<string> ResourceFormat(string value, dynamic resource)
         {
             throw new NotSupportedException("This method is provided solely to allow query translation on the server");
         }

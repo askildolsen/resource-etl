@@ -50,7 +50,8 @@ namespace resource_etl
                         Value = (
                             from value in property.Value
                             from resource in g.ToList()
-                            select ResourceFormat(value, resource)
+                            from formattedvalue in ResourceFormat(value, resource)
+                            select formattedvalue
                         ).Where(v => !String.IsNullOrWhiteSpace(v))
                     }
 

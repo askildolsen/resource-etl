@@ -9,7 +9,7 @@ namespace resource_etl
             return Digitalisert.Raven.ResourceModelExtensions.Properties(properties, resource, context);
         }
 
-        public static string ResourceFormat(string value, dynamic resource)
+        public static IEnumerable<string> ResourceFormat(string value, dynamic resource)
         {
             return Digitalisert.Raven.ResourceModelExtensions.ResourceFormat(value, resource);
         }
