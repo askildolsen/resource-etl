@@ -23,7 +23,9 @@ namespace resource_etl
                     SubTitle = resource.SubTitle,
                     Code = resource.Code,
                     Status = resource.Status,
-                    Tags = resource.Tags,
+                    Tags = resource.Tags.Union(
+                        resource.Properties.SelectMany(p => p.Tags).Where(t => t == "@wkt").Take(1)
+                    ),
                     Properties = (
                         from property in resource.Properties.Where(r => !r.Name.StartsWith("@"))
                         select new Property
@@ -123,7 +125,7 @@ namespace resource_etl
                     SubTitle = new string[] {},
                     Code = new string[] {},
                     Status = new string[] {},
-                    Tags = new[] { "@wkt" },
+                    Tags = new string[] {},
                     Properties = new[] {
                         new Property
                         {
