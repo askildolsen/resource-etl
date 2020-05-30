@@ -36,6 +36,8 @@ namespace resource_etl
                     Modified = g.Select(resource => resource.Modified).Max()
                 };
 
+            Index(Raven.Client.Constants.Documents.Indexing.Fields.AllFields, FieldIndexing.No);
+
             OutputReduceToCollection = "ResourceCluster";
             PatternForOutputReduceToCollectionReferences = r => $"ResourceClusterReferences/{r.Context}/{r.ResourceId}";
 

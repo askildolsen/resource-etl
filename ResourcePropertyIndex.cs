@@ -70,8 +70,7 @@ namespace resource_etl
                     Modified = g.Select(r => r.Modified).Max()
                 };
 
-            Index(r => r.Properties, FieldIndexing.No);
-            Store(r => r.Properties, FieldStorage.Yes);
+            Index(Raven.Client.Constants.Documents.Indexing.Fields.AllFields, FieldIndexing.No);
 
             OutputReduceToCollection = "ResourceProperty";
             PatternForOutputReduceToCollectionReferences = r => $"ResourcePropertyReferences/{r.Context}/{r.ResourceId}";

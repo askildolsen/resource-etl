@@ -102,8 +102,7 @@ namespace resource_etl
                     Modified = g.Select(resource => resource.Modified).Max()
                 };
 
-            Index(r => r.Properties, FieldIndexing.No);
-            Store(r => r.Properties, FieldStorage.Yes);
+            Index(Raven.Client.Constants.Documents.Indexing.Fields.AllFields, FieldIndexing.No);
 
             OutputReduceToCollection = "ResourceDerivedProperty";
             PatternForOutputReduceToCollectionReferences = r => $"ResourceDerivedPropertyReferences/{r.Context}/{r.ResourceId}/{r.Name}";
