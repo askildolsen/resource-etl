@@ -4,11 +4,6 @@ namespace resource_etl
 {
     public class ResourceModelUtils
     {
-        public static IEnumerable<dynamic> Properties(IEnumerable<dynamic> properties, dynamic resource, dynamic context)
-        {
-            return Digitalisert.Raven.ResourceModelExtensions.Properties(properties, resource, context);
-        }
-
         public static IEnumerable<string> ResourceFormat(string value, dynamic resource)
         {
             return Digitalisert.Raven.ResourceModelExtensions.ResourceFormat(value, resource);

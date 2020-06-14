@@ -24,16 +24,37 @@ namespace resource_etl
                     Code = resource.Code,
                     Status = resource.Status,
                     Tags = resource.Tags,
-                    Properties = (IEnumerable<Property>)Properties(
-                        from ontologyproperty in ontology.Properties
+                    Properties = (
+                        from ontologyproperty in ontology.Properties.Where(p => !p.Name.StartsWith("@"))
                         let property = resource.Properties.Where(p => p.Name == ontologyproperty.Name)
                         select new Property {
-                            Name = ontologyproperty.Name.ToString(),
-                            Value = property.SelectMany(p => p.Value).Union(ontologyproperty.Value).Select(v => v.ToString()).Distinct(),
-                            Tags = property.SelectMany(p => p.Tags).Union(ontologyproperty.Tags).Select(v => v.ToString()).Distinct(),
-                            Resources = property.SelectMany(p => p.Resources).Union(ontologyproperty.Resources),
+                            Name = ontologyproperty.Name,
+                            Value =
+                                from value in property.SelectMany(p => p.Value).Union(ontologyproperty.Value)
+                                from formattedvalue in ResourceFormat(value, resource)
+                                select formattedvalue,
+                            Tags = property.SelectMany(p => p.Tags).Union(ontologyproperty.Tags).Select(v => v).Distinct(),
+                            Resources = (
+                                from propertyresource in property.SelectMany(p => p.Resources).Where(r => !String.IsNullOrEmpty(r.ResourceId))
+                                select new Resource {
+                                    Context = propertyresource.Context ?? ontology.Context,
+                                    ResourceId = propertyresource.ResourceId
+                                }
+                            ).Union(
+                                from ontologypropertyresource in ontologyproperty.Resources
+                                from resourceId in 
+                                    from resourceIdValue in ontologypropertyresource.Properties.Where(p => p.Name == "@resourceId").SelectMany(p => p.Value)
+                                    from resourceIdFormattedValue in ResourceFormat(resourceIdValue, resource)
+                                    select resourceIdFormattedValue
+                                select new Resource {
+                                    Context = ontologypropertyresource.Context ?? ontology.Context,
+                                    ResourceId = resourceId
+                                }
+                            ).Union(
+                                ontologyproperty.Resources.Where(r => !r.Properties.Any(p => p.Name == "@resourceId"))
+                            ),
                             Properties = property.SelectMany(p => p.Properties).Union(ontologyproperty.Properties)
-                        }, resource, ontology.Context),
+                        }).Union(ontology.Properties.Where(p => p.Name.StartsWith("@"))),
                     Source = new[] { MetadataFor(resource).Value<String>("@id")},
                     Modified = MetadataFor(resource).Value<DateTime>("@last-modified")
                 }
