@@ -40,14 +40,14 @@ namespace resource_etl
                                 {
                                     Context = propertyresource.Context,
                                     ResourceId = propertyresource.ResourceId,
-                                    Type = resourceoutputs.SelectMany(r => r.Type).Distinct(),
-                                    SubType = resourceoutputs.SelectMany(r => r.SubType).Distinct(),
-                                    Title = resourceoutputs.SelectMany(r => r.Title).Distinct(),
-                                    SubTitle = resourceoutputs.SelectMany(r => r.SubTitle).Distinct(),
-                                    Code = resourceoutputs.SelectMany(r => r.Code).Distinct(),
-                                    Status = resourceoutputs.SelectMany(r => r.Status).Distinct(),
-                                    Tags = resourceoutputs.SelectMany(r => r.Tags).Distinct(),
-                                    Source = resourceoutputs.SelectMany(r => r.Source).Distinct()
+                                    Type = (propertyresource.Type ?? new string[] { }).Union(resourceoutputs.SelectMany(r => r.Type)).Distinct(),
+                                    SubType = (propertyresource.SubType ?? new string[] { }).Union(resourceoutputs.SelectMany(r => r.SubType)).Distinct(),
+                                    Title = (propertyresource.Title ?? new string[] { }).Union(resourceoutputs.SelectMany(r => r.Title)).Distinct(),
+                                    SubTitle = (propertyresource.SubTitle ?? new string[] { }).Union(resourceoutputs.SelectMany(r => r.SubTitle)).Distinct(),
+                                    Code = (propertyresource.Code ?? new string[] { }).Union(resourceoutputs.SelectMany(r => r.Code)).Distinct(),
+                                    Status = (propertyresource.Status ?? new string[] { }).Union(resourceoutputs.SelectMany(r => r.Status)).Distinct(),
+                                    Tags = (propertyresource.Tags ?? new string[] { }).Union(resourceoutputs.SelectMany(r => r.Tags)).Distinct(),
+                                    Source = (propertyresource.Source ?? new string[] { }).Union(resourceoutputs.SelectMany(r => r.Source)).Distinct()
                                 }
                         }
                     ).Union(
