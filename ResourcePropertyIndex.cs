@@ -62,7 +62,7 @@ namespace resource_etl
                                 ontologyproperty.Resources.Where(r => !r.Properties.Any(p => p.Name == "@resourceId"))
                             ),
                             Properties = property.SelectMany(p => p.Properties).Union(ontologyproperty.Properties)
-                        }).Union(ontology.Properties.Where(p => p.Name.StartsWith("@"))),
+                        }).Where(p => p.Value.Any() || p.Resources.Any()).Union(ontology.Properties.Where(p => p.Name.StartsWith("@"))),
                     Source = new[] { MetadataFor(resource).Value<String>("@id")},
                     Modified = MetadataFor(resource).Value<DateTime>("@last-modified")
                 }
