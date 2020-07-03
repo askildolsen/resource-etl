@@ -99,20 +99,6 @@ namespace resource_etl
 
             AddMap<ResourceDerivedProperty>(resources =>
                 from resource in resources
-                from derivedproperty in resource.Properties.Where(p => p.Tags.Contains("@wkt"))
-                
-                let propertyresourcereferences = LoadDocument<ResourceDerivedPropertyReferences>(derivedproperty.Source)
-                let derivedresourceproperties =
-                    from propertyresource in LoadDocument<ResourceDerivedProperty>(propertyresourcereferences.SelectMany(r => r.ReduceOutputs))
-                    where derivedproperty.Value.Any(v => propertyresource.Properties.Any(cp => cp.Value.Any(cv => WKTIntersects(v, cv))))
-                    select propertyresource
-
-                where derivedresourceproperties.Any()
-
-                let compareresources = LoadDocument<ResourceProperty>(derivedresourceproperties.SelectMany(r => r.Source))
-
-                from resourceproperty in LoadDocument<ResourceProperty>(resource.Source)
-                from property in resourceproperty.Properties.Where(p => p.Name == resource.Name)
 
                 select new Resource
                 {
@@ -125,41 +111,29 @@ namespace resource_etl
                     Code = new string[] {},
                     Status = new string[] {},
                     Tags = new string[] {},
-                    Properties = new[] {
-                        new Property
+                    Properties = 
+                        from property in resource.Properties
+                        select new Property
                         {
                             Name = property.Name,
                             Resources =
-                                from intersectingproperty in (IEnumerable<Property>)WKTIntersectingProperty(property.Value,
-                                    from derivedresourceproperty in derivedresourceproperties
-                                    from derivedresourcesource in derivedresourceproperty.Source
-                                    from compareresourceproperty in compareresources.Where(r => derivedresourcesource == MetadataFor(r).Value<String>("@id"))
-                                    from compareresourcevalue in compareresourceproperty.Properties.Where(p => p.Name == derivedresourceproperty.Name)
-                                    select new Property {
-                                        Value = compareresourcevalue.Value.Select(v => v.ToString()),
-                                        Source = new[] { derivedresourcesource }
-                                    }
-                                )
-
-                                from intersectingsource in intersectingproperty.Source
-                                from compareresourceproperty in compareresources.Where(r => intersectingsource == MetadataFor(r).Value<String>("@id")) 
-
-                                select new Resource {
-                                    Context = compareresourceproperty.Context,
-                                    ResourceId = compareresourceproperty.ResourceId,
-                                    Type = compareresourceproperty.Type,
-                                    SubType = compareresourceproperty.SubType,
-                                    Title = compareresourceproperty.Title,
-                                    SubTitle = compareresourceproperty.SubTitle,
-                                    Code = compareresourceproperty.Code,
-                                    Status = compareresourceproperty.Status,
-                                    Tags = compareresourceproperty.Tags,
-                                    Source = compareresourceproperty.Source
+                                from propertyresource in LoadDocument<ResourceProperty>(property.Source).Where(r => r != null)
+                                select new Resource
+                                {
+                                    Context = propertyresource.Context,
+                                    ResourceId = propertyresource.ResourceId,
+                                    Type = propertyresource.Type,
+                                    SubType = propertyresource.SubType,
+                                    Title = propertyresource.Title,
+                                    SubTitle = propertyresource.SubTitle,
+                                    Code = propertyresource.Code,
+                                    Status = propertyresource.Status,
+                                    Tags = propertyresource.Tags,
+                                    Source = propertyresource.Source
                                 }
-                        }
-                    },
+                        },
                     Source = new string[] { },
-                    Modified = resource.Modified ?? DateTime.MinValue
+                    Modified = DateTime.MinValue
                 }
             );
 
