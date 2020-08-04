@@ -25,12 +25,7 @@ namespace resource_etl
                 from resourcecompare in LoadDocument<ResourceCluster>(comparepropertyreferences.Distinct())
                 where !(resource.Context == resourcecompare.Context && resource.ResourceId == resourcecompare.ResourceId)
 
-                from ontologyresource in property.Resources
-                from ontolyresourceproperty in ontologyresource.Properties
-                from resourcecompareproperty in resourcecompare.Properties.Where(p => p.Name == ontolyresourceproperty.Name)
-
-                where ontologyresource.Context == resourcecompare.Context
-                    && ontologyresource.Type.All(type => resourcecompare.Properties.Where(p => p.Name == "@type").SelectMany(p => p.Value).Contains(type))
+                from resourcecompareproperty in resourcecompare.Properties
 
                 where property.Value.Any(wkt1 => resourcecompareproperty.Value.Any(wkt2 => WKTIntersects(wkt1, wkt2)))
 
@@ -52,9 +47,10 @@ namespace resource_etl
             AddMap<ResourceCluster>(resources =>
                 from resource in resources
                 from property in resource.Properties
+                from inverseproperty in property.Properties
 
                 let comparepropertyreferences =
-                    from clusterreference in LoadDocument<ResourceClusterReferences>(property.Source)
+                    from clusterreference in LoadDocument<ResourceClusterReferences>(inverseproperty.Source)
                     from cluster in LoadDocument<ResourceCluster>(clusterreference.ReduceOutputs)
                     from comparepropertyreference in LoadDocument<ResourceClusterReferences>(cluster.Source)
                     from c in comparepropertyreference.ReduceOutputs
@@ -63,12 +59,7 @@ namespace resource_etl
                 from resourcecompare in LoadDocument<ResourceCluster>(comparepropertyreferences.Distinct())
                 where !(resource.Context == resourcecompare.Context && resource.ResourceId == resourcecompare.ResourceId)
 
-                from ontolyresourceproperty in property.Properties.Where(p => p.Tags.Contains("@inverse"))
-                from resourcecompareproperty in resourcecompare.Properties.Where(p => p.Name == ontolyresourceproperty.Name)
-                from ontologyresource in ontolyresourceproperty.Resources
-
-                where ontologyresource.Context == resourcecompare.Context
-                    && ontologyresource.Type.All(type => resourcecompare.Properties.Where(p => p.Name == "@type").SelectMany(p => p.Value).Contains(type))
+                from resourcecompareproperty in resourcecompare.Properties
 
                 where property.Value.Any(wkt1 => resourcecompareproperty.Value.Any(wkt2 => WKTIntersects(wkt1, wkt2)))
 
@@ -76,10 +67,10 @@ namespace resource_etl
                 {
                     Context = resourcecompare.Context,
                     ResourceId = resourcecompare.ResourceId,
-                    Name = ontolyresourceproperty.Name,
+                    Name = inverseproperty.Name,
                     Properties = new[] {
                         new Property {
-                            Name = ontolyresourceproperty.Name,
+                            Name = inverseproperty.Name,
                             Source = resource.Source
                         }
                     },
