@@ -30,14 +30,17 @@ namespace resource_etl
             AddMap<ResourceProperty>(resources =>
                 from resource in resources
                 from property in resource.Properties.Where(p => p.Tags.Contains("@wkt"))
-                let clusterreferences =
+                let geohashes =
                     from wkt in property.Value.Where(v => v != null)
                     from geohash in WKTEncodeGeohash(wkt)
                     from i in Enumerable.Range(0, geohash.Length)
+                    select geohash.Substring(0, geohash.Length - i)
+                let clusterreferences =
+                    from geohash in geohashes
                     from ontologyresource in property.Resources
                     from ontologyresourceproperty in ontologyresource.Properties
                     from type in ontologyresource.Type
-                    select "ResourceClusterReferences/" + ontologyresource.Context + "/" + type + "/@" + geohash.Substring(0, geohash.Length - i) + "/" + ontologyresourceproperty.Name
+                    select "ResourceClusterReferences/" + ontologyresource.Context + "/" + type + "/@" + geohash + "/" + ontologyresourceproperty.Name
                 select new ResourceProperty
                 {
                     Context = resource.Context,
@@ -50,12 +53,10 @@ namespace resource_etl
                             Properties =
                                 from inverseontologyresourceproperty in property.Properties.Where(p => p.Tags.Contains("@inverse"))
                                 let inverseclusterreferences =
-                                    from wkt in property.Value.Where(v => v != null)
-                                    from geohash in WKTEncodeGeohash(wkt)
-                                    from i in Enumerable.Range(0, geohash.Length)
+                                    from geohash in geohashes
                                     from inverseontologyresource in inverseontologyresourceproperty.Resources
                                     from inversetype in inverseontologyresource.Type
-                                    select "ResourceClusterReferences/" + inverseontologyresource.Context + "/" + inversetype + "/@" + geohash.Substring(0, geohash.Length - i) + "/" + inverseontologyresourceproperty.Name
+                                    select "ResourceClusterReferences/" + inverseontologyresource.Context + "/" + inversetype + "/@" + geohash + "/" + inverseontologyresourceproperty.Name
                                 select new Property {
                                     Name = inverseontologyresourceproperty.Name,
                                     Source = inverseclusterreferences.Distinct()
