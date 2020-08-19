@@ -6,6 +6,7 @@ using Newtonsoft.Json;
 using Raven.Client.Documents;
 using Raven.Client.Documents.BulkInsert;
 using Raven.Client.Json;
+using Raven.Client.Json.Serialization.NewtonsoftJson;
 using static resource_etl.ResourceModel;
 
 namespace resource_etl
@@ -17,7 +18,7 @@ namespace resource_etl
             using (var store = new DocumentStore { Urls = new string[] { "http://localhost:8080" }, Database = "Digitalisert" })
             {
                 store.Conventions.FindCollectionName = t => t.Name.Replace("References", "/References");
-                store.Conventions.CustomizeJsonSerializer = s => s.NullValueHandling = NullValueHandling.Ignore;
+                store.Conventions.Serialization = new NewtonsoftJsonSerializationConventions { CustomizeJsonSerializer = s => s.NullValueHandling = NullValueHandling.Ignore };
                 store.Initialize();
 
                 var stopwatch = Stopwatch.StartNew();
