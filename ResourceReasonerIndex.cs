@@ -99,6 +99,14 @@ namespace resource_etl
 
             AddMap<ResourceDerivedProperty>(resources =>
                 from resource in resources
+                from resourceproperty in LoadDocument<ResourceProperty>(resource.Source).Where(r => r != null)
+                from property in resourceproperty.Properties.Where(p => p.Name == resource.Name)
+
+                from compareproperty in resource.Properties
+                from compareresourceproperty in LoadDocument<ResourceProperty>(compareproperty.Source).Where(r => r != null)
+
+                where compareproperty.Name.EndsWith("+")
+                    || property.Value.Any(v1 => compareresourceproperty.Properties.Where(p => p.Name == compareproperty.Name).SelectMany(p => p.Value).Any(v2 => WKTIntersects(v1, v2)))
 
                 select new Resource
                 {
@@ -111,75 +119,29 @@ namespace resource_etl
                     Code = new string[] {},
                     Status = new string[] {},
                     Tags = new string[] {},
-                    Properties = 
-                        from property in resource.Properties
-                        select new Property
+                    Properties = new[] {
+                        new Property
                         {
                             Name = property.Name,
-                            Resources =
-                                from propertyresource in LoadDocument<ResourceProperty>(property.Source).Where(r => r != null)
-                                select new Resource
+                            Resources = new[] {
+                                new Resource
                                 {
-                                    Context = propertyresource.Context,
-                                    ResourceId = propertyresource.ResourceId,
-                                    Type = propertyresource.Type,
-                                    SubType = propertyresource.SubType,
-                                    Title = propertyresource.Title,
-                                    SubTitle = propertyresource.SubTitle,
-                                    Code = propertyresource.Code,
-                                    Status = propertyresource.Status,
-                                    Tags = propertyresource.Tags,
-                                    Source = propertyresource.Source
+                                    Context = compareresourceproperty.Context,
+                                    ResourceId = compareresourceproperty.ResourceId,
+                                    Type = compareresourceproperty.Type,
+                                    SubType = compareresourceproperty.SubType,
+                                    Title = compareresourceproperty.Title,
+                                    SubTitle = compareresourceproperty.SubTitle,
+                                    Code = compareresourceproperty.Code,
+                                    Status = compareresourceproperty.Status,
+                                    Tags = compareresourceproperty.Tags,
+                                    Source = compareresourceproperty.Source
                                 }
-                        },
+                            }
+                        }
+                    },
                     Source = new string[] { },
                     Modified = DateTime.MinValue
-                }
-            );
-
-            AddMap<ResourceCluster>(clusters =>
-                from cluster in clusters.Where(r => r.Context == "@geohash")
-                let resourceproperties = LoadDocument<ResourceProperty>(cluster.Source).Where(r => r != null)
-                select new Resource
-                {
-                    Context = cluster.Context,
-                    ResourceId = cluster.ResourceId,
-                    Type = new string[] {},
-                    SubType = new string[] {},
-                    Title = new string[] {},
-                    SubTitle = new string[] {},
-                    Code = new[] { cluster.ResourceId },
-                    Status = new string[] {},
-                    Tags = new[] { "@wkt" },
-                    Properties = (
-                        new[] {
-                            new Property {
-                                Name = "Geohash",
-                                Value = new[] { WKTDecodeGeohash(cluster.ResourceId) },
-                                Tags = new[] { "@wkt" }
-                            }
-                        }
-                    ).Union(
-                        new[] {
-                            new Property {
-                                Name = "References",
-                                Resources =
-                                    from propertyresource in resourceproperties
-                                    select new Resource
-                                    {
-                                        Context = propertyresource.Context,
-                                        ResourceId = propertyresource.ResourceId,
-                                        Type = propertyresource.Type,
-                                        SubType = propertyresource.SubType,
-                                        Status = propertyresource.Status,
-                                        Tags = propertyresource.Tags,
-                                        Source = propertyresource.Source
-                                    }
-                            }
-                        }
-                    ),
-                    Source = new string[] { },
-                    Modified = cluster.Modified ?? DateTime.MinValue
                 }
             );
 

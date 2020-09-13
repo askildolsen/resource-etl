@@ -11,70 +11,84 @@ namespace resource_etl
     {
         public ResourceDerivedPropertyIndex()
         {
-            AddMap<ResourceCluster>(resources =>
-                from resource in resources
-                from property in resource.Properties
+            AddMap<ResourceCluster>(clusters =>
+                from cluster in clusters
+                let compareclusters =
+                    from clusterreference in LoadDocument<ResourceClusterReferences>(cluster.Source).Where(r => r != null)
+                    from comparecluster in LoadDocument<ResourceCluster>(clusterreference.ReduceOutputs)
+                    select comparecluster
 
-                let comparepropertyreferences =
-                    from clusterreference in LoadDocument<ResourceClusterReferences>(property.Source)
-                    from cluster in LoadDocument<ResourceCluster>(clusterreference.ReduceOutputs)
-                    from comparepropertyreference in LoadDocument<ResourceClusterReferences>(cluster.Source)
-                    from c in comparepropertyreference.ReduceOutputs
-                    select c
+                let compareproperties = cluster.Properties.Union(compareclusters.SelectMany(r => r.Properties).ToList())
+                from property in cluster.Properties
 
-                from resourcecompare in LoadDocument<ResourceCluster>(comparepropertyreferences.Distinct())
-                where !(resource.Context == resourcecompare.Context && resource.ResourceId == resourcecompare.ResourceId)
+                let geohashes = property.Value.Select(v => v.ToString().Replace("+", "")).ToList()
+                let convexhull = property.Properties.Where(p => p.Name == "@convexhull").SelectMany(p => p.Value)
 
-                from resourcecompareproperty in resourcecompare.Properties
+                from resource in property.Resources
 
-                where property.Value.Any(wkt1 => resourcecompareproperty.Value.Any(wkt2 => WKTIntersects(wkt1, wkt2)))
+                from propertycompare in cluster.Properties.Union(compareclusters.SelectMany(r => r.Properties))
+                let geohashescompare = propertycompare.Value.Select(v => v.ToString().Replace("+", "")).ToList()
+                let geohashescomparecovers = propertycompare.Value.Where(v => v.EndsWith("+")).Select(v => v.ToString().Replace("+", "")).ToList()
+                let convexhullcompare = propertycompare.Properties.Where(p => p.Name == "@convexhull").SelectMany(p => p.Value)
+                
+                from derivedproperty in (
+                    from resourcecompare in propertycompare.Resources
+                    where !(resource.Context == resourcecompare.Context && resource.ResourceId == resourcecompare.ResourceId && property.Name == propertycompare.Name)
 
-                select new ResourceProperty
-                {
-                    Context = resource.Context,
-                    ResourceId = resource.ResourceId,
-                    Name = property.Name,
-                    Properties = new[] {
-                        new Property {
-                            Name = property.Name,
-                            Source = resourcecompare.Source
-                        }
-                    },
-                    Source = resource.Source
-                }
-            );
+                    where property.Properties.SelectMany(p => p.Resources).Where(r => r.Properties.Any(p => p.Name == propertycompare.Name)).Any(r =>
+                        r.Context == resourcecompare.Context
+                        && r.Type.All(t => resourcecompare.Type.Contains(t))
+                    )
 
-            AddMap<ResourceCluster>(resources =>
-                from resource in resources
-                from property in resource.Properties
-                from inverseproperty in property.Properties
+                    where geohashes.Any(v1 => geohashescompare.Any(v2 => v1.StartsWith(v2)))
+                        && convexhull.Any(e1 => convexhullcompare.Any(e2 => WKTIntersects(e1, e2)))
+                    
+                    select new ResourceProperty {
+                        Context = resource.Context,
+                        ResourceId = resource.ResourceId,
+                        Name = property.Name,
+                        Properties = new[] {
+                            new Property {
+                                Name = propertycompare.Name
+                                    + ((geohashes.Any(v1 => geohashescomparecovers.Any(v2 => v1.StartsWith(v2)))) ? "+" : ""),
+                                Source = resourcecompare.Source
+                            }
+                        },
+                        Source = resource.Source
+                    }
+                ).Union(
+                    from resourcecompare in propertycompare.Resources
+                    where !(resource.Context == resourcecompare.Context && resource.ResourceId == resourcecompare.ResourceId && property.Name == propertycompare.Name)
 
-                let comparepropertyreferences =
-                    from clusterreference in LoadDocument<ResourceClusterReferences>(inverseproperty.Source)
-                    from cluster in LoadDocument<ResourceCluster>(clusterreference.ReduceOutputs)
-                    from comparepropertyreference in LoadDocument<ResourceClusterReferences>(cluster.Source)
-                    from c in comparepropertyreference.ReduceOutputs
-                    select c
+                    where property.Properties.SelectMany(p => p.Properties).Where(p => p.Name == propertycompare.Name).SelectMany(p => p.Resources).Any(r =>
+                        r.Context == resourcecompare.Context
+                        && r.Type.All(t => resourcecompare.Type.Contains(t))
+                    )
 
-                from resourcecompare in LoadDocument<ResourceCluster>(comparepropertyreferences.Distinct())
-                where !(resource.Context == resourcecompare.Context && resource.ResourceId == resourcecompare.ResourceId)
+                    where geohashes.Any(v1 => geohashescompare.Any(v2 => v1.StartsWith(v2)))
+                        && convexhull.Any(e1 => convexhullcompare.Any(e2 => WKTIntersects(e1, e2)))
+                    
+                    select new ResourceProperty {
+                        Context = resourcecompare.Context,
+                        ResourceId = resourcecompare.ResourceId,
+                        Name = propertycompare.Name,
+                        Properties = new[] {
+                            new Property {
+                                Name = property.Name
+                                    + ((geohashes.Any(v1 => geohashescomparecovers.Any(v2 => v1.StartsWith(v2)))) ? "+" : ""),
+                                Source = resource.Source
+                            }
+                        },
+                        Source = resourcecompare.Source
+                    }
+                )
 
-                from resourcecompareproperty in resourcecompare.Properties
-
-                where property.Value.Any(wkt1 => resourcecompareproperty.Value.Any(wkt2 => WKTIntersects(wkt1, wkt2)))
-
-                select new ResourceProperty
-                {
-                    Context = resourcecompare.Context,
-                    ResourceId = resourcecompare.ResourceId,
-                    Name = inverseproperty.Name,
-                    Properties = new[] {
-                        new Property {
-                            Name = inverseproperty.Name,
-                            Source = resource.Source
-                        }
-                    },
-                    Source = resourcecompare.Source
+                select new ResourceProperty {
+                    Context = derivedproperty.Context,
+                    ResourceId = derivedproperty.ResourceId,
+                    Name = derivedproperty.Name,
+                    Properties = derivedproperty.Properties,
+                    Source = derivedproperty.Source
                 }
             );
 
@@ -102,8 +116,6 @@ namespace resource_etl
 
             OutputReduceToCollection = "ResourceDerivedProperty";
             PatternForOutputReduceToCollectionReferences = r => $"ResourceDerivedPropertyReferences/{r.Context}/{r.ResourceId}/{r.Name}";
-
-            Configuration["Indexing.MapBatchSize"] = "128";
 
             AdditionalSources = new Dictionary<string, string>
             {

@@ -31,13 +31,13 @@ namespace resource_etl
             public IEnumerable<string> Source { get; set; }
         }
 
-        public class ResourceCluster : Resource { }
         public class ResourceProperty : Resource {
             public string Name { get; set; }
         }
         public class ResourcePropertyReferences {
             public string[] ReduceOutputs { get; set; }
         }
+        public class ResourceCluster : ResourceProperty { }
         public class ResourceClusterReferences : ResourcePropertyReferences { }
 
         public class ResourceOntology : Resource { }
