@@ -18,7 +18,6 @@ namespace resource_etl
                     from comparecluster in LoadDocument<ResourceCluster>(clusterreference.ReduceOutputs)
                     select comparecluster
 
-                let compareproperties = cluster.Properties.Union(compareclusters.SelectMany(r => r.Properties).ToList())
                 from property in cluster.Properties
 
                 let geohashes = property.Value.Select(v => v.ToString().Replace("+", "")).ToList()
@@ -30,65 +29,25 @@ namespace resource_etl
                 let geohashescompare = propertycompare.Value.Select(v => v.ToString().Replace("+", "")).ToList()
                 let geohashescomparecovers = propertycompare.Value.Where(v => v.EndsWith("+")).Select(v => v.ToString().Replace("+", "")).ToList()
                 let convexhullcompare = propertycompare.Properties.Where(p => p.Name == "@convexhull").SelectMany(p => p.Value)
-                
-                from derivedproperty in (
-                    from resourcecompare in propertycompare.Resources
-                    where !(resource.Context == resourcecompare.Context && resource.ResourceId == resourcecompare.ResourceId && property.Name == propertycompare.Name)
 
-                    where property.Properties.SelectMany(p => p.Resources).Where(r => r.Properties.Any(p => p.Name == propertycompare.Name)).Any(r =>
-                        r.Context == resourcecompare.Context
-                        && r.Type.All(t => resourcecompare.Type.Contains(t))
-                    )
+                from resourcecompare in propertycompare.Resources
+                where !(resource.Context == resourcecompare.Context && resource.ResourceId == resourcecompare.ResourceId && property.Name == propertycompare.Name)
 
-                    where geohashes.Any(v1 => geohashescompare.Any(v2 => v1.StartsWith(v2)))
-                        && convexhull.Any(e1 => convexhullcompare.Any(e2 => WKTIntersects(e1, e2)))
-                    
-                    select new ResourceProperty {
-                        Context = resource.Context,
-                        ResourceId = resource.ResourceId,
-                        Name = property.Name,
-                        Properties = new[] {
-                            new Property {
-                                Name = propertycompare.Name
-                                    + ((geohashes.Any(v1 => geohashescomparecovers.Any(v2 => v1.StartsWith(v2)))) ? "+" : ""),
-                                Source = resourcecompare.Source
-                            }
-                        },
-                        Source = resource.Source
-                    }
-                ).Union(
-                    from resourcecompare in propertycompare.Resources
-                    where !(resource.Context == resourcecompare.Context && resource.ResourceId == resourcecompare.ResourceId && property.Name == propertycompare.Name)
-
-                    where property.Properties.SelectMany(p => p.Properties).Where(p => p.Name == propertycompare.Name).SelectMany(p => p.Resources).Any(r =>
-                        r.Context == resourcecompare.Context
-                        && r.Type.All(t => resourcecompare.Type.Contains(t))
-                    )
-
-                    where geohashes.Any(v1 => geohashescompare.Any(v2 => v1.StartsWith(v2)))
-                        && convexhull.Any(e1 => convexhullcompare.Any(e2 => WKTIntersects(e1, e2)))
-                    
-                    select new ResourceProperty {
-                        Context = resourcecompare.Context,
-                        ResourceId = resourcecompare.ResourceId,
-                        Name = propertycompare.Name,
-                        Properties = new[] {
-                            new Property {
-                                Name = property.Name
-                                    + ((geohashes.Any(v1 => geohashescomparecovers.Any(v2 => v1.StartsWith(v2)))) ? "+" : ""),
-                                Source = resource.Source
-                            }
-                        },
-                        Source = resourcecompare.Source
-                    }
-                )
+                where geohashes.Any(v1 => geohashescompare.Any(v2 => v1.StartsWith(v2)))
+                    && convexhull.Any(e1 => convexhullcompare.Any(e2 => WKTIntersects(e1, e2)))
 
                 select new ResourceProperty {
-                    Context = derivedproperty.Context,
-                    ResourceId = derivedproperty.ResourceId,
-                    Name = derivedproperty.Name,
-                    Properties = derivedproperty.Properties,
-                    Source = derivedproperty.Source
+                    Context = resource.Context,
+                    ResourceId = resource.ResourceId,
+                    Name = property.Name,
+                    Properties = new[] {
+                        new Property {
+                            Name = propertycompare.Name
+                                + ((geohashes.Any(v1 => geohashescomparecovers.Any(v2 => v1.StartsWith(v2)))) ? "+" : ""),
+                            Source = resourcecompare.Source
+                        }
+                    },
+                    Source = resource.Source
                 }
             );
 

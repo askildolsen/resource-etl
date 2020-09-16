@@ -108,10 +108,36 @@ namespace resource_etl
                 where compareproperty.Name.EndsWith("+")
                     || property.Value.Any(v1 => compareresourceproperty.Properties.Where(p => p.Name == compareproperty.Name).SelectMany(p => p.Value).Any(v2 => WKTIntersects(v1, v2)))
 
+                from derivedproperty in (
+                    from ontologyresource in property.Resources
+                    from ontologyproperty in ontologyresource.Properties
+                    where ontologyproperty.Name == compareproperty.Name.Replace("+", "")
+                        && ontologyresource.Context == compareresourceproperty.Context
+                        && ontologyresource.Type.All(t => compareresourceproperty.Type.Contains(t))
+
+                    select new {
+                        fromresource = resourceproperty,
+                        name = property.Name,
+                        toresource = compareresourceproperty
+                    }
+                ).Union(
+                    from ontologyproperty in property.Properties
+                    from ontologyresource in ontologyproperty.Resources
+                    where ontologyproperty.Name == compareproperty.Name.Replace("+", "")
+                        && ontologyresource.Context == compareresourceproperty.Context
+                        && ontologyresource.Type.All(t => compareresourceproperty.Type.Contains(t))
+
+                    select new {
+                        fromresource = compareresourceproperty,
+                        name = compareproperty.Name.Replace("+", ""),
+                        toresource = resourceproperty
+                    }
+                )
+
                 select new Resource
                 {
-                    Context = resource.Context,
-                    ResourceId = resource.ResourceId,
+                    Context = derivedproperty.fromresource.Context,
+                    ResourceId = derivedproperty.fromresource.ResourceId,
                     Type = new string[] {},
                     SubType = new string[] {},
                     Title = new string[] {},
@@ -122,20 +148,20 @@ namespace resource_etl
                     Properties = new[] {
                         new Property
                         {
-                            Name = property.Name,
+                            Name = derivedproperty.name,
                             Resources = new[] {
                                 new Resource
                                 {
-                                    Context = compareresourceproperty.Context,
-                                    ResourceId = compareresourceproperty.ResourceId,
-                                    Type = compareresourceproperty.Type,
-                                    SubType = compareresourceproperty.SubType,
-                                    Title = compareresourceproperty.Title,
-                                    SubTitle = compareresourceproperty.SubTitle,
-                                    Code = compareresourceproperty.Code,
-                                    Status = compareresourceproperty.Status,
-                                    Tags = compareresourceproperty.Tags,
-                                    Source = compareresourceproperty.Source
+                                    Context = derivedproperty.toresource.Context,
+                                    ResourceId = derivedproperty.toresource.ResourceId,
+                                    Type = derivedproperty.toresource.Type,
+                                    SubType = derivedproperty.toresource.SubType,
+                                    Title = derivedproperty.toresource.Title,
+                                    SubTitle = derivedproperty.toresource.SubTitle,
+                                    Code = derivedproperty.toresource.Code,
+                                    Status = derivedproperty.toresource.Status,
+                                    Tags = derivedproperty.toresource.Tags,
+                                    Source = derivedproperty.toresource.Source
                                 }
                             }
                         }
