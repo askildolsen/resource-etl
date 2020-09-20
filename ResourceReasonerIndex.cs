@@ -103,7 +103,8 @@ namespace resource_etl
                 from property in resourceproperty.Properties.Where(p => p.Name == resource.Name)
 
                 from compareproperty in resource.Properties
-                from compareresourceproperty in LoadDocument<ResourceProperty>(compareproperty.Source).Where(r => r != null)
+                let comparesource = compareproperty.Source.Except(resource.Properties.Where(p => p.Name == compareproperty.Name + "+").SelectMany(p => p.Source))
+                from compareresourceproperty in LoadDocument<ResourceProperty>(comparesource).Where(r => r != null)
 
                 where compareproperty.Name.EndsWith("+")
                     || property.Value.Any(v1 => compareresourceproperty.Properties.Where(p => p.Name == compareproperty.Name).SelectMany(p => p.Value).Any(v2 => WKTIntersects(v1, v2)))
