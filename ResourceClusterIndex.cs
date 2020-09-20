@@ -32,7 +32,7 @@ namespace resource_etl
                     Properties = new[] {
                         new Property {
                             Name = property.Name,
-                            Value = geohashcluster.geohashes,
+                            Value = geohashcluster.geohashes.Select(g => g.Replace("+", "")),
                             Resources = new[] {
                                 new Resource {
                                     Context = resource.Context,
@@ -44,6 +44,10 @@ namespace resource_etl
                                 new Property {
                                     Name = "@convexhull",
                                     Value = convexhull
+                                },
+                                new Property {
+                                    Name = "@covers",
+                                    Value = geohashcluster.geohashes.Where(g => g.EndsWith("+")).Select(g => g.Replace("+", ""))
                                 }
                             }
                         }

@@ -13,6 +13,7 @@ namespace resource_etl
         {
             AddMap<ResourceCluster>(clusters =>
                 from cluster in clusters
+                let clustergeohash = cluster.ResourceId.Split(new[] { '/'} ).Last()
                 let compareclusters =
                     from clusterreference in LoadDocument<ResourceClusterReferences>(cluster.Source).Where(r => r != null)
                     from comparecluster in LoadDocument<ResourceCluster>(clusterreference.ReduceOutputs)
@@ -20,14 +21,15 @@ namespace resource_etl
 
                 from property in cluster.Properties
 
-                let geohashes = property.Value.Select(v => v.ToString().Replace("+", "")).ToList()
+                let geohashes = property.Value.ToList()
                 let convexhull = property.Properties.Where(p => p.Name == "@convexhull").SelectMany(p => p.Value)
 
                 from resource in property.Resources
 
                 from propertycompare in cluster.Properties.Union(compareclusters.SelectMany(r => r.Properties))
-                let geohashescompare = propertycompare.Value.Select(v => v.ToString().Replace("+", "")).ToList()
-                let geohashescomparecovers = propertycompare.Value.Where(v => v.EndsWith("+")).Select(v => v.ToString().Replace("+", "")).ToList()
+                let geohashescompare = propertycompare.Value.Where(v => v.StartsWith(clustergeohash) || clustergeohash.StartsWith(v)).ToList()
+                where geohashescompare.Any()
+                let geohashescomparecovers = propertycompare.Properties.Where(p => p.Name == "@covers").SelectMany(p => p.Value).ToList()
                 let convexhullcompare = propertycompare.Properties.Where(p => p.Name == "@convexhull").SelectMany(p => p.Value)
 
                 from resourcecompare in propertycompare.Resources
