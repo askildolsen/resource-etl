@@ -21,7 +21,8 @@ namespace resource_etl
                 from geohashcluster in 
                     from wkt in property.Value.Where(v => v != null)
                     from geohash in WKTEncodeGeohash(wkt)
-                    group geohash by geohash.Substring(0, (geohash.Replace("+", "").Length / 2) + 1) into geohashG
+                    let geohashlength = (geohash.EndsWith("+")) ? geohash.Length - 2 : geohash.Length
+                    group geohash by geohash.Substring(0, (geohashlength / 2) + 1) into geohashG
                     select new { cluster = geohashG.Key, geohashes = geohashG }
 
                 select new ResourceProperty
@@ -32,7 +33,7 @@ namespace resource_etl
                     Properties = new[] {
                         new Property {
                             Name = property.Name,
-                            Value = geohashcluster.geohashes.Select(g => g.Replace("+", "")),
+                            Value = geohashcluster.geohashes.Where(g => !g.EndsWith("+")),
                             Resources = new[] {
                                 new Resource {
                                     Context = resource.Context,
