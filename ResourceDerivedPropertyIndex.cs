@@ -29,7 +29,6 @@ namespace resource_etl
                 from propertycompare in cluster.Properties.Union(compareclusters.SelectMany(r => r.Properties))
                 let geohashescompare = propertycompare.Value.Where(v => v.StartsWith(clustergeohash) || clustergeohash.StartsWith(v)).ToList()
                 where geohashescompare.Any()
-                let geohashescomparecovers = propertycompare.Properties.Where(p => p.Name == "@covers").SelectMany(p => p.Value).ToList()
                 let convexhullcompare = propertycompare.Properties.Where(p => p.Name == "@convexhull").SelectMany(p => p.Value)
 
                 from resourcecompare in propertycompare.Resources
@@ -37,6 +36,8 @@ namespace resource_etl
 
                 where geohashes.Any(v1 => geohashescompare.Any(v2 => v1.StartsWith(v2)))
                     && convexhull.Any(e1 => convexhullcompare.Any(e2 => WKTIntersects(e1, e2)))
+
+                let geohashescomparecovers = propertycompare.Properties.Where(p => p.Name == "@covers").SelectMany(p => p.Value).ToList()
 
                 select new ResourceProperty {
                     Context = resource.Context,
