@@ -61,21 +61,21 @@ namespace resource_etl
             AddMap<ResourceProperty>(resources =>
                 from resource in resources
                 from property in resource.Properties
+                from inverseproperty in property.Properties.Where(p => p.Tags.Contains("@inverse"))
                 from propertyresource in property.Resources.Where(r => r.ResourceId != null)
 
                 select new Resource {
                     Context = propertyresource.Context,
                     ResourceId = propertyresource.ResourceId,
-                    Type = propertyresource.Type ?? new string[] {},
-                    SubType = propertyresource.SubType ?? new string[] {},
-                    Title = propertyresource.Title ?? new string[] {},
-                    SubTitle = propertyresource.SubTitle ?? new string[] {},
-                    Code = propertyresource.Code ?? new string[] {},
-                    Status = propertyresource.Status ?? new string[] {},
-                    Tags = propertyresource.Tags ?? new string[] {},
-                    Properties =
-                        from inverseproperty in property.Properties.Where(p => p.Tags.Contains("@inverse"))
-                        select new Property {
+                    Type = new string[] {},
+                    SubType = new string[] {},
+                    Title = new string[] {},
+                    SubTitle = new string[] {},
+                    Code = new string[] {},
+                    Status = new string[] {},
+                    Tags = new string[] {},
+                    Properties = new[] {
+                        new Property {
                             Name = inverseproperty.Name,
                             Resources = new[] {
                                 new Resource {
@@ -91,7 +91,8 @@ namespace resource_etl
                                     Source = resource.Source
                                 }
                             }
-                        },
+                        }
+                    },
                     Source = new string[] { },
                     Modified = DateTime.MinValue
                 }

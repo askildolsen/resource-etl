@@ -48,21 +48,42 @@ namespace resource_etl
                                     select resourceIdFormattedValue
                                 select new Resource {
                                     Context = ontologyresource.Context ?? ontology.Context,
-                                    ResourceId = resourceId,
-                                    Type = ontologyresource.Type.Union(ontologyresource.Properties.Where(p => p.Name == "@type").SelectMany(p => p.Value).SelectMany(v => ResourceFormat(v, resource))).Distinct(),
-                                    SubType = ontologyresource.SubType.Union(ontologyresource.Properties.Where(p => p.Name == "@subtype").SelectMany(p => p.Value).SelectMany(v => ResourceFormat(v, resource))).Distinct(),
-                                    Title = ontologyresource.Title.Union(ontologyresource.Properties.Where(p => p.Name == "@title").SelectMany(p => p.Value).SelectMany(v => ResourceFormat(v, resource))).Distinct(),
-                                    SubTitle = ontologyresource.SubTitle.Union(ontologyresource.Properties.Where(p => p.Name == "@subtitle").SelectMany(p => p.Value).SelectMany(v => ResourceFormat(v, resource))).Distinct(),
-                                    Code = ontologyresource.Code.Union(ontologyresource.Properties.Where(p => p.Name == "@code").SelectMany(p => p.Value).SelectMany(v => ResourceFormat(v, resource))).Distinct(),
-                                    Status = ontologyresource.Status.Union(ontologyresource.Properties.Where(p => p.Name == "@status").SelectMany(p => p.Value).SelectMany(v => ResourceFormat(v, resource))).Distinct(),
-                                    Tags = ontologyresource.Tags.Union(ontologyresource.Properties.Where(p => p.Name == "@tags").SelectMany(p => p.Value).SelectMany(v => ResourceFormat(v, resource))).Distinct(),
-                                    Properties = ontologyproperty.Properties,
+                                    ResourceId = resourceId
                                 }
                             ).Union(
                                 ontologyproperty.Resources.Where(r => !r.Properties.Any(p => p.Name == "@resourceId"))
                             ),
                             Properties = property.SelectMany(p => p.Properties).Union(ontologyproperty.Properties)
                         }).Where(p => p.Value.Any() || p.Resources.Any()).Union(ontology.Properties.Where(p => p.Name.StartsWith("@"))),
+                    Source = new[] { MetadataFor(resource).Value<String>("@id")},
+                    Modified = MetadataFor(resource).Value<DateTime>("@last-modified")
+                }
+            );
+
+            AddMap<ResourceOntology>(ontologies =>
+                from ontology in ontologies
+                from ontologyproperty in ontology.Properties.Where(p => !p.Name.StartsWith("@"))
+                from ontologyresource in ontologyproperty.Resources
+                where ontologyresource.Properties.Any(p => p.Name == "@resourceId")
+
+                from resource in LoadDocument<ResourceMapped>(ontology.Source).Where(r => r != null)
+
+                from resourceId in 
+                    from resourceIdValue in ontologyresource.Properties.Where(p => p.Name == "@resourceId").SelectMany(p => p.Value)
+                    from resourceIdFormattedValue in ResourceFormat(resourceIdValue, resource)
+                    select resourceIdFormattedValue
+
+                select new Resource {
+                    Context = ontologyresource.Context ?? ontology.Context,
+                    ResourceId = resourceId,
+                    Type = ontologyresource.Type.Union(ontologyresource.Properties.Where(p => p.Name == "@type").SelectMany(p => p.Value).SelectMany(v => ResourceFormat(v, resource))).Distinct(),
+                    SubType = ontologyresource.SubType.Union(ontologyresource.Properties.Where(p => p.Name == "@subtype").SelectMany(p => p.Value).SelectMany(v => ResourceFormat(v, resource))).Distinct(),
+                    Title = ontologyresource.Title.Union(ontologyresource.Properties.Where(p => p.Name == "@title").SelectMany(p => p.Value).SelectMany(v => ResourceFormat(v, resource))).Distinct(),
+                    SubTitle = ontologyresource.SubTitle.Union(ontologyresource.Properties.Where(p => p.Name == "@subtitle").SelectMany(p => p.Value).SelectMany(v => ResourceFormat(v, resource))).Distinct(),
+                    Code = ontologyresource.Code.Union(ontologyresource.Properties.Where(p => p.Name == "@code").SelectMany(p => p.Value).SelectMany(v => ResourceFormat(v, resource))).Distinct(),
+                    Status = ontologyresource.Status.Union(ontologyresource.Properties.Where(p => p.Name == "@status").SelectMany(p => p.Value).SelectMany(v => ResourceFormat(v, resource))).Distinct(),
+                    Tags = ontologyresource.Tags.Union(ontologyresource.Properties.Where(p => p.Name == "@tags").SelectMany(p => p.Value).SelectMany(v => ResourceFormat(v, resource))).Distinct(),
+                    Properties = ontologyproperty.Properties,
                     Source = new[] { MetadataFor(resource).Value<String>("@id")},
                     Modified = MetadataFor(resource).Value<DateTime>("@last-modified")
                 }
