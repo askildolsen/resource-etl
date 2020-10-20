@@ -83,8 +83,20 @@ namespace resource_etl
                     Code = ontologyresource.Code.Union(ontologyresource.Properties.Where(p => p.Name == "@code").SelectMany(p => p.Value).SelectMany(v => ResourceFormat(v, resource))).Distinct(),
                     Status = ontologyresource.Status.Union(ontologyresource.Properties.Where(p => p.Name == "@status").SelectMany(p => p.Value).SelectMany(v => ResourceFormat(v, resource))).Distinct(),
                     Tags = ontologyresource.Tags.Union(ontologyresource.Properties.Where(p => p.Name == "@tags").SelectMany(p => p.Value).SelectMany(v => ResourceFormat(v, resource))).Distinct(),
-                    Properties = ontologyproperty.Properties,
-                    Source = new[] { MetadataFor(resource).Value<String>("@id")},
+                    Properties = (
+                        from ontologyresourceproperty in ontologyresource.Properties.Where(p => !p.Name.StartsWith("@"))
+                        select new Property {
+                            Name = ontologyresourceproperty.Name,
+                            Value =
+                                from value in ontologyresourceproperty.Value
+                                from formattedvalue in ResourceFormat(value, resource)
+                                select formattedvalue,
+                            Source = new[] { MetadataFor(resource).Value<String>("@id")}
+                        }
+                    ).Union(
+                        ontologyproperty.Properties
+                    ),
+                    Source = new string[] { },
                     Modified = MetadataFor(resource).Value<DateTime>("@last-modified")
                 }
             );
