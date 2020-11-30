@@ -26,7 +26,9 @@ namespace resource_etl
                     Tags = resource.Tags,
                     Properties = (
                         from ontologyproperty in ontology.Properties.Where(p => !p.Name.StartsWith("@"))
-                        let property = resource.Properties.Where(p => p.Name == ontologyproperty.Name)
+                        let property = resource.Properties
+                            .Where(p => ontologyproperty.Tags.Contains("@clone") ? ontologyproperty.Properties.Any(op => p.Name == op.Name) : p.Name == ontologyproperty.Name)
+                            .Where(p => ontologyproperty.Tags.Where(t => new string[] { "@first", "@last" }.Contains(t)).All(op => p.Tags.Contains(op)))
                         select new Property {
                             Name = ontologyproperty.Name,
                             Value =
@@ -85,12 +87,16 @@ namespace resource_etl
                     Tags = ontologyresource.Tags.Union(ontologyresource.Properties.Where(p => p.Name == "@tags").SelectMany(p => p.Value).SelectMany(v => ResourceFormat(v, resource))).Distinct(),
                     Properties = (
                         from ontologyresourceproperty in ontologyresource.Properties.Where(p => !p.Name.StartsWith("@"))
+                        let property = resource.Properties
+                            .Where(p => ontologyresourceproperty.Tags.Contains("@clone") ? ontologyresourceproperty.Properties.Any(op => p.Name == op.Name) : p.Name == ontologyresourceproperty.Name)
+                            .Where(p => ontologyresourceproperty.Tags.Where(t => new string[] { "@first", "@last" }.Contains(t)).All(op => p.Tags.Contains(op)))
                         select new Property {
                             Name = ontologyresourceproperty.Name,
                             Value =
-                                from value in ontologyresourceproperty.Value
+                                from value in property.SelectMany(p => p.Value).Union(ontologyresourceproperty.Value)
                                 from formattedvalue in ResourceFormat(value, resource)
                                 select formattedvalue,
+                            Tags = ontologyresourceproperty.Tags,
                             Source = new[] { MetadataFor(resource).Value<String>("@id")}
                         }
                     ).Union(
