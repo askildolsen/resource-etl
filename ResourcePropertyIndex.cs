@@ -26,9 +26,12 @@ namespace resource_etl
                     Tags = resource.Tags,
                     Properties = (
                         from ontologyproperty in ontology.Properties.Where(p => !p.Name.StartsWith("@"))
-                        let property = resource.Properties
-                            .Where(p => ontologyproperty.Tags.Contains("@clone") ? ontologyproperty.Properties.Any(op => p.Name == op.Name) : p.Name == ontologyproperty.Name)
-                            .Where(p => ontologyproperty.Tags.Where(t => new string[] { "@first", "@last" }.Contains(t)).All(op => p.Tags.Contains(op)))
+                        let property = (!ontologyproperty.Tags.Contains("@derive")) ? resource.Properties.Where(p => p.Name == ontologyproperty.Name) :
+                            from ontologyderivedproperty in ontologyproperty.Properties
+                            from derivedproperty in resource.Properties
+                            where ontologyderivedproperty.Name == derivedproperty.Name && ontologyderivedproperty.Tags.All(t => derivedproperty.Tags.Contains(t))
+                            select derivedproperty
+
                         select new Property {
                             Name = ontologyproperty.Name,
                             Value =
@@ -87,9 +90,12 @@ namespace resource_etl
                     Tags = ontologyresource.Tags.Union(ontologyresource.Properties.Where(p => p.Name == "@tags").SelectMany(p => p.Value).SelectMany(v => ResourceFormat(v, resource))).Distinct(),
                     Properties = (
                         from ontologyresourceproperty in ontologyresource.Properties.Where(p => !p.Name.StartsWith("@"))
-                        let property = resource.Properties
-                            .Where(p => ontologyresourceproperty.Tags.Contains("@clone") ? ontologyresourceproperty.Properties.Any(op => p.Name == op.Name) : p.Name == ontologyresourceproperty.Name)
-                            .Where(p => ontologyresourceproperty.Tags.Where(t => new string[] { "@first", "@last" }.Contains(t)).All(op => p.Tags.Contains(op)))
+                        let property = (!ontologyresourceproperty.Tags.Contains("@derive")) ? resource.Properties.Where(p => p.Name == ontologyproperty.Name) :
+                            from ontologyderivedproperty in ontologyresourceproperty.Properties
+                            from derivedproperty in resource.Properties
+                            where ontologyderivedproperty.Name == derivedproperty.Name && ontologyderivedproperty.Tags.All(t => derivedproperty.Tags.Contains(t))
+                            select derivedproperty
+
                         select new Property {
                             Name = ontologyresourceproperty.Name,
                             Value =
