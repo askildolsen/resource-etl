@@ -13,7 +13,9 @@ namespace resource_etl
         {
             AddMap<ResourceOntology>(ontologies =>
                 from ontology in ontologies
+                let fetch = ontology.Properties.Where(p => p.Name == "@fetch")
                 from resource in LoadDocument<ResourceMapped>(ontology.Source).Where(r => r != null)
+                where !fetch.Any() || LoadDocument<ResourceOntologyReferences>("ResourceOntologyReferences/" + ontology.Context + "/" + resource.ResourceId) != null
                 select new Resource {
                     Context = ontology.Context,
                     ResourceId = resource.ResourceId,

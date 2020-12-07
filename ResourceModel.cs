@@ -41,6 +41,7 @@ namespace resource_etl
         public class ResourceClusterReferences : ResourcePropertyReferences { }
 
         public class ResourceOntology : Resource { }
+        public class ResourceOntologyReferences : ResourcePropertyReferences { }
         public class ResourceDerivedProperty : ResourceProperty { }
         public class ResourceDerivedPropertyReferences : ResourcePropertyReferences { }
         public class ResourceInverseProperty : Resource { }
