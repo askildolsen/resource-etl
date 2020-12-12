@@ -33,6 +33,7 @@ namespace resource_etl
                                 new Resource {
                                     Context = resource.Context,
                                     Type = resource.Type,
+                                    Tags = resource.Tags ?? new string[] { },
                                     Properties =
                                         from property in resource.Properties ?? new Property[] { }
                                         select new Property {

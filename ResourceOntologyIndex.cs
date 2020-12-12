@@ -21,6 +21,7 @@ namespace resource_etl
                 {
                     Context = context,
                     ResourceId = type + "/" + GenerateHash(resource.ResourceId).Replace("/", "/-"),
+                    Tags = ontology.Tags,
                     Properties = ontology.Properties,
                     Source = new[] { MetadataFor(resource).Value<String>("@id") },
                     Modified = MetadataFor(resource).Value<DateTime>("@last-modified")
@@ -32,7 +33,7 @@ namespace resource_etl
                 let context = MetadataFor(resource).Value<String>("@collection").Replace("Resource", "")
                 from type in resource.Type
                 let ontology = LoadDocument<OntologyResource>("OntologyResource/" + context + "/" + type)
-                where ontology != null
+                where ontology != null && ontology.Tags.Contains("@fetch")
 
                 from ontologyproperty in ontology.Properties.Where(p => !p.Name.StartsWith("@"))
                 let property = resource.Properties.Where(p => p.Name == ontologyproperty.Name)
@@ -42,6 +43,7 @@ namespace resource_etl
                 {
                     Context = propertyresource.Context ?? ontology.Context,
                     ResourceId = propertyresource.ResourceId,
+                    Tags = new string[] { },
                     Properties = new Property[] { },
                     Source = new string[] { },
                     Modified = MetadataFor(resource).Value<DateTime>("@last-modified")
@@ -68,6 +70,7 @@ namespace resource_etl
                 {
                     Context = ontologyresource.Context,
                     ResourceId = resourceId,
+                    Tags = new string[] { },
                     Properties = new Property[] { },
                     Source = new string[] { },
                     Modified = MetadataFor(resource).Value<DateTime>("@last-modified")
@@ -81,6 +84,7 @@ namespace resource_etl
                 {
                     Context = g.Key.Context,
                     ResourceId = g.Key.ResourceId,
+                    Tags = g.SelectMany(resource => resource.Tags).Distinct(),
                     Properties = g.SelectMany(resource => resource.Properties).Distinct(),
                     Source = g.SelectMany(resource => resource.Source).Distinct(),
                     Modified = g.Select(resource => resource.Modified).Max()
