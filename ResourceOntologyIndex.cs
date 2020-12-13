@@ -33,7 +33,7 @@ namespace resource_etl
                 let context = MetadataFor(resource).Value<String>("@collection").Replace("Resource", "")
                 from type in resource.Type
                 let ontology = LoadDocument<OntologyResource>("OntologyResource/" + context + "/" + type)
-                where ontology != null && ontology.Tags.Contains("@fetch")
+                where ontology != null && !ontology.Tags.Contains("@fetch")
 
                 from ontologyproperty in ontology.Properties.Where(p => !p.Name.StartsWith("@"))
                 let property = resource.Properties.Where(p => p.Name == ontologyproperty.Name)
@@ -55,7 +55,7 @@ namespace resource_etl
                 let context = MetadataFor(resource).Value<String>("@collection").Replace("Resource", "")
                 from type in resource.Type
                 let ontology = LoadDocument<OntologyResource>("OntologyResource/" + context + "/" + type)
-                where ontology != null
+                where ontology != null && !ontology.Tags.Contains("@fetch")
 
                 from ontologyproperty in ontology.Properties.Where(p => !p.Name.StartsWith("@"))
                 from ontologyresource in ontologyproperty.Resources

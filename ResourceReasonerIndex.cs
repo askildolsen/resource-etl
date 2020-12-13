@@ -32,6 +32,7 @@ namespace resource_etl
                         {
                             Name = property.Name,
                             Value = property.Value,
+                            Tags = property.Tags,
                             Resources =
                                 from propertyresource in property.Resources.Where(r => r.ResourceId != null)
                                 let reduceoutputs = LoadDocument<ResourcePropertyReferences>("ResourcePropertyReferences/" + propertyresource.Context + "/" + propertyresource.ResourceId).ReduceOutputs
@@ -63,6 +64,7 @@ namespace resource_etl
                 from property in resource.Properties
                 from inverseproperty in property.Properties.Where(p => p.Tags.Contains("@inverse"))
                 from propertyresource in property.Resources.Where(r => r.ResourceId != null)
+                where LoadDocument<ResourcePropertyReferences>("ResourcePropertyReferences/" + propertyresource.Context + "/" + propertyresource.ResourceId) != null
 
                 select new Resource {
                     Context = propertyresource.Context,

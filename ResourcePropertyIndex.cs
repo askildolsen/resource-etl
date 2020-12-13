@@ -73,6 +73,7 @@ namespace resource_etl
                 where ontologyresource.Properties.Any(p => p.Name == "@resourceId")
 
                 from resource in LoadDocument<ResourceMapped>(ontology.Source).Where(r => r != null)
+                where !ontology.Tags.Contains("@fetch") || LoadDocument<ResourceOntologyReferences>("ResourceOntologyReferences/" + ontology.Context + "/" + resource.ResourceId) != null
 
                 from resourceId in 
                     from resourceIdValue in ontologyresource.Properties.Where(p => p.Name == "@resourceId").SelectMany(p => p.Value)
