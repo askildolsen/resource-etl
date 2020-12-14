@@ -35,41 +35,37 @@ namespace resource_etl
                 let ontology = LoadDocument<OntologyResource>("OntologyResource/" + context + "/" + type)
                 where ontology != null && !ontology.Tags.Contains("@fetch")
 
-                from ontologyproperty in ontology.Properties.Where(p => !p.Name.StartsWith("@"))
-                let property = resource.Properties.Where(p => p.Name == ontologyproperty.Name)
-                from propertyresource in property.SelectMany(p => p.Resources).Where(r => !String.IsNullOrEmpty(r.ResourceId))
+                from ontologypropertyresource in (
+                    from ontologyproperty in ontology.Properties.Where(p => !p.Name.StartsWith("@"))
+                    let property = resource.Properties.Where(p => p.Name == ontologyproperty.Name)
+                    from propertyresource in property.SelectMany(p => p.Resources).Where(r => !String.IsNullOrEmpty(r.ResourceId))
+
+                    select new Resource
+                    {
+                        Context = propertyresource.Context ?? ontology.Context,
+                        ResourceId = propertyresource.ResourceId
+                    }
+                ).Union(
+                    from ontologyproperty in ontology.Properties.Where(p => !p.Name.StartsWith("@"))
+                    from ontologyresource in ontologyproperty.Resources
+                    where ontologyresource.Properties.Any(p => p.Name == "@resourceId")
+
+                    from resourceId in 
+                        from resourceIdValue in ontologyresource.Properties.Where(p => p.Name == "@resourceId").SelectMany(p => p.Value)
+                        from resourceIdFormattedValue in ResourceFormat(resourceIdValue, resource)
+                        select resourceIdFormattedValue
+
+                    select new Resource
+                    {
+                        Context = ontologyresource.Context,
+                        ResourceId = resourceId
+                    }
+                )
 
                 select new Resource
                 {
-                    Context = propertyresource.Context ?? ontology.Context,
-                    ResourceId = propertyresource.ResourceId,
-                    Tags = new string[] { },
-                    Properties = new Property[] { },
-                    Source = new string[] { },
-                    Modified = MetadataFor(resource).Value<DateTime>("@last-modified")
-                }
-            );
-
-            AddMapForAll<ResourceMapped>(resources =>
-                from resource in resources.Where(r => MetadataFor(r).Value<String>("@collection").EndsWith("Resource"))
-                let context = MetadataFor(resource).Value<String>("@collection").Replace("Resource", "")
-                from type in resource.Type
-                let ontology = LoadDocument<OntologyResource>("OntologyResource/" + context + "/" + type)
-                where ontology != null && !ontology.Tags.Contains("@fetch")
-
-                from ontologyproperty in ontology.Properties.Where(p => !p.Name.StartsWith("@"))
-                from ontologyresource in ontologyproperty.Resources
-                where ontologyresource.Properties.Any(p => p.Name == "@resourceId")
-
-                from resourceId in 
-                    from resourceIdValue in ontologyresource.Properties.Where(p => p.Name == "@resourceId").SelectMany(p => p.Value)
-                    from resourceIdFormattedValue in ResourceFormat(resourceIdValue, resource)
-                    select resourceIdFormattedValue
-
-                select new Resource
-                {
-                    Context = ontologyresource.Context,
-                    ResourceId = resourceId,
+                    Context = ontologypropertyresource.Context,
+                    ResourceId = ontologypropertyresource.ResourceId,
                     Tags = new string[] { },
                     Properties = new Property[] { },
                     Source = new string[] { },
