@@ -37,7 +37,7 @@ namespace resource_etl
                             Name = ontologyproperty.Name,
                             Value =
                                 from value in property.SelectMany(p => p.Value).Union(ontologyproperty.Value)
-                                from formattedvalue in ResourceFormat(value, resource)
+                                from formattedvalue in ResourceFormat(value, resource, property)
                                 select formattedvalue,
                             Tags = property.SelectMany(p => p.Tags).Union(ontologyproperty.Tags).Select(v => v).Distinct(),
                             Resources = (
@@ -50,7 +50,7 @@ namespace resource_etl
                                 from ontologyresource in ontologyproperty.Resources
                                 from resourceId in 
                                     from resourceIdValue in ontologyresource.Properties.Where(p => p.Name == "@resourceId").SelectMany(p => p.Value)
-                                    from resourceIdFormattedValue in ResourceFormat(resourceIdValue, resource)
+                                    from resourceIdFormattedValue in ResourceFormat(resourceIdValue, resource, property)
                                     select resourceIdFormattedValue
                                 select new Resource {
                                     Context = ontologyresource.Context ?? ontology.Context,
@@ -102,7 +102,7 @@ namespace resource_etl
                             Name = ontologyresourceproperty.Name,
                             Value =
                                 from value in property.SelectMany(p => p.Value).Union(ontologyresourceproperty.Value)
-                                from formattedvalue in ResourceFormat(value, resource)
+                                from formattedvalue in ResourceFormat(value, resource, property)
                                 select formattedvalue,
                             Tags = ontologyresourceproperty.Tags,
                             Source = new[] { MetadataFor(resource).Value<String>("@id")}

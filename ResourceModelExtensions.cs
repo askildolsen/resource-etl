@@ -5,7 +5,7 @@ namespace Digitalisert.Raven
 {
     public static class ResourceModelExtensions
     {
-        public static IEnumerable<string> ResourceFormat(string value, dynamic resource)
+        public static IEnumerable<string> ResourceFormat(string value, dynamic resource, dynamic resourceproperty = null)
         {
             throw new NotSupportedException("This method is provided solely to allow query translation on the server");
         }

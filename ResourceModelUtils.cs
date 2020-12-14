@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 
 namespace resource_etl
 {
@@ -7,6 +8,11 @@ namespace resource_etl
         public static IEnumerable<string> ResourceFormat(string value, dynamic resource)
         {
             return Digitalisert.Raven.ResourceModelExtensions.ResourceFormat(value, resource);
+        }
+
+        public static IEnumerable<string> ResourceFormat(string value, dynamic resource, dynamic resourceproperty)
+        {
+            return Digitalisert.Raven.ResourceModelExtensions.ResourceFormat(value, resource, resourceproperty);
         }
 
         public static string GenerateHash(string key)
