@@ -141,7 +141,7 @@ namespace resource_etl
                     Code = g.SelectMany(r => r.Code).Union(computedProperties.Where(p => p.Name == "@code").SelectMany(p => p.Value)).Select(v => v.ToString()).Distinct(),
                     Status = g.SelectMany(r => r.Status).Union(computedProperties.Where(p => p.Name == "@status").SelectMany(p => p.Value)).Select(v => v.ToString()).Distinct(),
                     Tags = g.SelectMany(r => r.Tags).Union(computedProperties.Where(p => p.Name == "@tags").SelectMany(p => p.Value)).Select(v => v.ToString()).Distinct(),
-                    Properties = g.SelectMany(r => r.Properties),
+                    Properties = (IEnumerable<Property>)Properties(g.SelectMany(r => r.Properties)),
                     Source = g.SelectMany(r => r.Source).Distinct(),
                     Modified = g.Select(r => r.Modified).Max()
                 };
