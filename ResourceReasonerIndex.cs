@@ -106,16 +106,14 @@ namespace resource_etl
                 from property in resourceproperty.Properties.Where(p => p.Name == resource.Name)
 
                 from compareproperty in resource.Properties
-                let comparesource = compareproperty.Source.Except(resource.Properties.Where(p => p.Name == compareproperty.Name + "+").SelectMany(p => p.Source))
-                from compareresourceproperty in LoadDocument<ResourceProperty>(comparesource).Where(r => r != null)
+                from compareresourceproperty in LoadDocument<ResourceProperty>(compareproperty.Source).Where(r => r != null)
 
-                where compareproperty.Name.EndsWith("+")
-                    || property.Value.Any(v1 => compareresourceproperty.Properties.Where(p => p.Name == compareproperty.Name).SelectMany(p => p.Value).Any(v2 => WKTIntersects(v1, v2)))
+                where property.Value.Any(v1 => compareresourceproperty.Properties.Where(p => p.Name == compareproperty.Name).SelectMany(p => p.Value).Any(v2 => WKTIntersects(v1, v2)))
 
                 from derivedproperty in (
                     from ontologyresource in property.Resources
                     from ontologyproperty in ontologyresource.Properties
-                    where ontologyproperty.Name == compareproperty.Name.Replace("+", "")
+                    where ontologyproperty.Name == compareproperty.Name
                         && ontologyresource.Context == compareresourceproperty.Context
                         && ontologyresource.Type.All(t => compareresourceproperty.Type.Contains(t))
 
@@ -127,13 +125,13 @@ namespace resource_etl
                 ).Union(
                     from ontologyproperty in property.Properties
                     from ontologyresource in ontologyproperty.Resources
-                    where ontologyproperty.Name == compareproperty.Name.Replace("+", "")
+                    where ontologyproperty.Name == compareproperty.Name
                         && ontologyresource.Context == compareresourceproperty.Context
                         && ontologyresource.Type.All(t => compareresourceproperty.Type.Contains(t))
 
                     select new {
                         fromresource = compareresourceproperty,
-                        name = compareproperty.Name.Replace("+", ""),
+                        name = compareproperty.Name,
                         toresource = resourceproperty
                     }
                 )

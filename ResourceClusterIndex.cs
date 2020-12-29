@@ -15,40 +15,23 @@ namespace resource_etl
                 from resource in resources
                 from type in resource.Type
                 from property in resource.Properties.Where(p => p.Tags.Contains("@wkt"))
-
-                let convexhull = property.Value.Where(v => v != null).Select(v => WKTConvexHull(v)).ToList()
-
-                from geohashcluster in 
-                    from wkt in property.Value.Where(v => v != null)
-                    from geohash in WKTEncodeGeohash(wkt)
-                    let geohashlength = (geohash.EndsWith("+")) ? geohash.Length - 2 : geohash.Length
-                    group geohash by geohash.Substring(0, ((geohashlength + 1) / 2) + 1) into geohashG
-                    select new { cluster = geohashG.Key, geohashes = geohashG }
+                from convexhull in property.Value.Where(v => v != null).Select(v => WKTConvexHull(v))
+                from geohash in WKTEncodeGeohash(convexhull)
 
                 select new ResourceProperty
                 {
                     Context = resource.Context,
-                    ResourceId = type + "/" + geohashcluster.cluster,
+                    ResourceId = type + "/" + geohash,
                     Name = property.Name,
                     Properties = new[] {
                         new Property {
                             Name = property.Name,
-                            Value = geohashcluster.geohashes.Where(g => !g.EndsWith("+")),
+                            Value = new[] { convexhull },
                             Resources = new[] {
                                 new Resource {
                                     Context = resource.Context,
                                     ResourceId = resource.ResourceId,
                                     Source = new[] { MetadataFor(resource).Value<String>("@id") }
-                                }
-                            },
-                            Properties = new[] {
-                                new Property {
-                                    Name = "@convexhull",
-                                    Value = convexhull
-                                },
-                                new Property {
-                                    Name = "@covers",
-                                    Value = geohashcluster.geohashes.Where(g => g.EndsWith("+")).Select(g => g.Replace("+", ""))
                                 }
                             }
                         }
@@ -57,18 +40,18 @@ namespace resource_etl
                         from ontologyresource in property.Resources
                         from ontologytype in ontologyresource.Type
                         from ontologyresourceproperty in ontologyresource.Properties
-                        from i in Enumerable.Range(0, geohashcluster.cluster.Length)
-                        let parentgeohash = geohashcluster.cluster.Substring(0, geohashcluster.cluster.Length - i)
-                        where !(ontologyresource.Context == resource.Context && ontologytype == type && geohashcluster.cluster == parentgeohash && property.Name == ontologyresourceproperty.Name)
-                        select "ResourceClusterReferences/" + ontologyresource.Context + "/" + ontologytype + "/" + geohashcluster.cluster.Substring(0, geohashcluster.cluster.Length - i) + "/" + ontologyresourceproperty.Name
+                        from i in Enumerable.Range(0, geohash.Length)
+                        let parentgeohash = geohash.Substring(0, geohash.Length - i)
+                        where !(ontologyresource.Context == resource.Context && ontologytype == type && geohash == parentgeohash && property.Name == ontologyresourceproperty.Name)
+                        select "ResourceClusterReferences/" + ontologyresource.Context + "/" + ontologytype + "/" + geohash.Substring(0, geohash.Length - i) + "/" + ontologyresourceproperty.Name
                     ).Union(
                         from ontologyresourceproperty in property.Properties
                         from ontologyresource in ontologyresourceproperty.Resources
                         from ontologytype in ontologyresource.Type
-                        from i in Enumerable.Range(0, geohashcluster.cluster.Length)
-                        let parentgeohash = geohashcluster.cluster.Substring(0, geohashcluster.cluster.Length - i)
-                        where !(ontologyresource.Context == resource.Context && ontologytype == type && geohashcluster.cluster == parentgeohash && property.Name == ontologyresourceproperty.Name)
-                        select "ResourceClusterReferences/" + ontologyresource.Context + "/" + ontologytype + "/" + geohashcluster.cluster.Substring(0, geohashcluster.cluster.Length - i) + "/" + ontologyresourceproperty.Name
+                        from i in Enumerable.Range(0, geohash.Length)
+                        let parentgeohash = geohash.Substring(0, geohash.Length - i)
+                        where !(ontologyresource.Context == resource.Context && ontologytype == type && geohash == parentgeohash && property.Name == ontologyresourceproperty.Name)
+                        select "ResourceClusterReferences/" + ontologyresource.Context + "/" + ontologytype + "/" + geohash.Substring(0, geohash.Length - i) + "/" + ontologyresourceproperty.Name
 
                     )
                 }
