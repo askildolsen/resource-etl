@@ -14,6 +14,7 @@ namespace resource_etl
             public IEnumerable<string> Title { get; set; }
             public IEnumerable<string> SubTitle { get; set; }
             public IEnumerable<string> Code { get; set; }
+            public IEnumerable<string> Body { get; set; }
             public IEnumerable<string> Status { get; set; }
             public IEnumerable<string> Tags { get; set; }
             public IEnumerable<Property> Properties { get; set; }
@@ -39,7 +40,8 @@ namespace resource_etl
         }
         public class ResourceCluster : ResourceProperty { }
         public class ResourceClusterReferences : ResourcePropertyReferences { }
-
+        public class ResourceMapping : Resource { }
+        public class ResourceMappingReferences : ResourcePropertyReferences { }
         public class ResourceOntology : Resource { }
         public class ResourceOntologyReferences : ResourcePropertyReferences { }
         public class ResourceDerivedProperty : ResourceProperty { }

@@ -66,6 +66,7 @@ namespace resource_etl
                     }
                 }
 
+                new ResourceMappingIndex().Execute(store);
                 new ResourceOntologyIndex().Execute(store);
                 new ResourcePropertyIndex().Execute(store);
                 new ResourceClusterIndex().Execute(store);

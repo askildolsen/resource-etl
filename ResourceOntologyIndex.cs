@@ -11,15 +11,15 @@ namespace resource_etl
     {
         public ResourceOntologyIndex()
         {
-            AddMapForAll<ResourceMapped>(resources =>
-                from resource in resources.Where(r => MetadataFor(r).Value<String>("@collection").EndsWith("Resource"))
-                let context = MetadataFor(resource).Value<String>("@collection").Replace("Resource", "")
+            AddMap<ResourceMapping>(resources =>
+                from resource in resources
                 from type in resource.Type
-                let ontology = LoadDocument<OntologyResource>("OntologyResource/" + context + "/" + type)
+                from ontologyreference in LoadDocument<ResourceMappingReferences>("ResourceMappingReferences/" + resource.Context + "/" + type).ReduceOutputs
+                let ontology = LoadDocument<ResourceMapping>(ontologyreference)
                 where ontology != null
                 select new Resource
                 {
-                    Context = context,
+                    Context = resource.Context,
                     ResourceId = type + "/" + GenerateHash(resource.ResourceId).Replace("/", "/-"),
                     Tags = ontology.Tags,
                     Properties = ontology.Properties,
@@ -28,11 +28,11 @@ namespace resource_etl
                 }
             );
 
-            AddMapForAll<ResourceMapped>(resources =>
-                from resource in resources.Where(r => MetadataFor(r).Value<String>("@collection").EndsWith("Resource"))
-                let context = MetadataFor(resource).Value<String>("@collection").Replace("Resource", "")
+            AddMap<ResourceMapping>(resources =>
+                from resource in resources
                 from type in resource.Type
-                let ontology = LoadDocument<OntologyResource>("OntologyResource/" + context + "/" + type)
+                from ontologyreference in LoadDocument<ResourceMappingReferences>("ResourceMappingReferences/" + resource.Context + "/" + type).ReduceOutputs
+                let ontology = LoadDocument<ResourceMapping>(ontologyreference)
                 where ontology != null && !ontology.Tags.Contains("@fetch")
 
                 from ontologypropertyresource in (

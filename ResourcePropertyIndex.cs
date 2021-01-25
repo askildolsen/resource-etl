@@ -13,7 +13,7 @@ namespace resource_etl
         {
             AddMap<ResourceOntology>(ontologies =>
                 from ontology in ontologies
-                from resource in LoadDocument<ResourceMapped>(ontology.Source).Where(r => r != null)
+                from resource in LoadDocument<ResourceMapping>(ontology.Source).Where(r => r != null)
                 where !ontology.Tags.Contains("@fetch") || LoadDocument<ResourceOntologyReferences>("ResourceOntologyReferences/" + ontology.Context + "/" + resource.ResourceId) != null
                 select new Resource {
                     Context = ontology.Context,
@@ -72,7 +72,7 @@ namespace resource_etl
                 from ontologyresource in ontologyproperty.Resources.Where(r => r.Tags.Contains("@push"))
                 where ontologyresource.Properties.Any(p => p.Name == "@resourceId")
 
-                from resource in LoadDocument<ResourceMapped>(ontology.Source).Where(r => r != null)
+                from resource in LoadDocument<ResourceMapping>(ontology.Source).Where(r => r != null)
                 where !ontology.Tags.Contains("@fetch") || LoadDocument<ResourceOntologyReferences>("ResourceOntologyReferences/" + ontology.Context + "/" + resource.ResourceId) != null
 
                 from resourceId in 
