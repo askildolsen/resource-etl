@@ -19,13 +19,20 @@ namespace resource_etl
                     select comparecluster
 
                 from property in cluster.Properties
+                from geohash in property.Value.Select(v => v.Split(new char[] { '|' }))
                 from resource in property.Resources
 
                 from propertycompare in cluster.Properties.Union(compareclusters.SelectMany(r => r.Properties))
+                from geohashcompare in propertycompare.Value.Select(v => v.Split(new char[] { '|' }))
                 from resourcecompare in propertycompare.Resources
 
                 where !(resource.Context == resourcecompare.Context && resource.ResourceId == resourcecompare.ResourceId && property.Name == propertycompare.Name)
-                    && property.Value.Any(e1 => propertycompare.Value.Any(e2 => WKTIntersects(e1, e2)))
+                    && (
+                        // a|ab == a|abc
+                        (geohash[0] == geohashcompare[0] && geohash[1].IndexOfAny(geohashcompare[1].ToCharArray()) >= 0) ||
+                        // aa|ab = a|abc, aaa|ab = a|abc
+                        (geohash[0].Length > geohashcompare[0].Length && geohashcompare[1].Contains(geohash[0].Substring(geohashcompare[0].Length, 1)))
+                    )
 
                 select new ResourceProperty {
                     Context = resource.Context,

@@ -15,8 +15,9 @@ namespace resource_etl
                 from resource in resources
                 from type in resource.Type
                 from property in resource.Properties.Where(p => p.Tags.Contains("@wkt"))
-                from convexhull in property.Value.Where(v => v != null).Select(v => WKTConvexHull(v))
-                from geohash in WKTEncodeGeohash(convexhull)
+                from wkt in property.Value
+                from encodegeohash in WKTEncodeGeohash(wkt)
+                let geohash = encodegeohash.Substring(0, encodegeohash.IndexOf('|'))
 
                 select new ResourceProperty
                 {
@@ -26,7 +27,7 @@ namespace resource_etl
                     Properties = new[] {
                         new Property {
                             Name = property.Name,
-                            Value = new[] { convexhull },
+                            Value = new[] { encodegeohash },
                             Resources = new[] {
                                 new Resource {
                                     Context = resource.Context,
