@@ -40,7 +40,12 @@ namespace resource_etl
                     Name = property.Name,
                     Properties = new[] {
                         new Property {
-                            Name = propertycompare.Name,
+                            Name = propertycompare.Name + ((
+                                // a|ab|b == a|abc|b
+                                (geohash[0] == geohashcompare[0] && geohash[2].IndexOfAny(geohashcompare[2].ToCharArray()) >= 0) ||
+                                // aa|ab|b = a|abc|b, aaa|ab|b = a|abc|b
+                                (geohash[0].Length > geohashcompare[0].Length && geohashcompare[2].Contains(geohash[0].Substring(geohashcompare[0].Length, 1)))
+                            ) ? "+" : ""),
                             Source = resourcecompare.Source
                         }
                     },

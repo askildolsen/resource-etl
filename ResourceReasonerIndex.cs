@@ -105,15 +105,25 @@ namespace resource_etl
                 from resourceproperty in LoadDocument<ResourceProperty>(resource.Source).Where(r => r != null)
                 from property in resourceproperty.Properties.Where(p => p.Name == resource.Name)
 
-                from compareproperty in resource.Properties
-                from compareresourceproperty in LoadDocument<ResourceProperty>(compareproperty.Source).Where(r => r != null)
-
-                where property.Value.Any(v1 => compareresourceproperty.Properties.Where(p => p.Name == compareproperty.Name).SelectMany(p => p.Value).Any(v2 => WKTIntersects(v1, v2)))
+                from compareproperty in resource.Properties.Select(p => p.Name.Replace("+", "")).Distinct()
+                from compareresourceproperty in (
+                    from compare in resource.Properties.Where(p => p.Name == compareproperty + "+")
+                    from compareresource in LoadDocument<ResourceProperty>(compare.Source).Where(r => r != null)
+                    select compareresource
+                ).Union(
+                    from compare in resource.Properties.Where(p => p.Name == compareproperty)
+                    let comparedsources = resource.Properties.Where(p => p.Name == compareproperty + "+").SelectMany(p => p.Source)
+                    let comparesources = compare.Source.Where(s => !comparedsources.Contains(s))
+                    where comparesources.Any()
+                    from compareresource in LoadDocument<ResourceProperty>(comparesources).Where(r => r != null)
+                    where property.Value.Any(v1 => compareresource.Properties.Where(p => p.Name == compareproperty).SelectMany(p => p.Value).Any(v2 => WKTIntersects(v1, v2)))
+                    select compareresource
+                )
 
                 from derivedproperty in (
                     from ontologyresource in property.Resources
                     from ontologyproperty in ontologyresource.Properties
-                    where ontologyproperty.Name == compareproperty.Name
+                    where ontologyproperty.Name == compareproperty
                         && ontologyresource.Context == compareresourceproperty.Context
                         && ontologyresource.Type.All(t => compareresourceproperty.Type.Contains(t))
 
@@ -125,13 +135,13 @@ namespace resource_etl
                 ).Union(
                     from ontologyproperty in property.Properties
                     from ontologyresource in ontologyproperty.Resources
-                    where ontologyproperty.Name == compareproperty.Name
+                    where ontologyproperty.Name == compareproperty
                         && ontologyresource.Context == compareresourceproperty.Context
                         && ontologyresource.Type.All(t => compareresourceproperty.Type.Contains(t))
 
                     select new {
                         fromresource = compareresourceproperty,
-                        name = compareproperty.Name,
+                        name = compareproperty,
                         toresource = resourceproperty
                     }
                 )
