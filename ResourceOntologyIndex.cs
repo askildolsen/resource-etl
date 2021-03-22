@@ -16,7 +16,7 @@ namespace resource_etl
                 from type in resource.Type
                 from ontologyreference in LoadDocument<ResourceMappingReferences>("ResourceMappingReferences/" + resource.Context + "/" + type).ReduceOutputs
                 let ontology = LoadDocument<ResourceMapping>(ontologyreference)
-                where ontology != null
+                where ontology != null || type.StartsWith("@")
                 select new Resource
                 {
                     Context = resource.Context,

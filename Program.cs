@@ -32,7 +32,10 @@ namespace resource_etl
                             bulkInsert.Store(
                                 new Resource {
                                     Context = resource.Context,
-                                    Type = resource.Type,
+                                    ResourceId = type,
+                                    Type = new[] { "@type" },
+                                    Title = resource.Title,
+                                    Body = resource.Body,
                                     Tags = resource.Tags ?? new string[] { },
                                     Properties =
                                         from property in resource.Properties ?? new Property[] { }

@@ -47,8 +47,8 @@ namespace resource_etl
         public class ResourceDerivedProperty : ResourceProperty { }
         public class ResourceDerivedPropertyReferences : ResourcePropertyReferences { }
         public class ResourceInverseProperty : Resource { }
-        public class OntologyResource : Resource { }
         public class ResourceMapped : Resource { }
+        public class OntologyResource : ResourceMapped { }
         public class EnheterResource : ResourceMapped { }
         public class N50KartdataResource : ResourceMapped { }
         public class MatrikkelenResource : ResourceMapped { }

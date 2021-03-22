@@ -9,32 +9,11 @@ namespace resource_etl
     {
         public ResourceMappingIndex()
         {
-            AddMap<OntologyResource>(ontologies =>
-                from ontology in ontologies
-                from type in ontology.Type
-                select new Resource
-                {
-                    Context = ontology.Context,
-                    ResourceId = type,
-                    Type = ontology.Type,
-                    SubType = ontology.SubType,
-                    Title = ontology.Title,
-                    SubTitle = ontology.SubTitle,
-                    Code = ontology.Code,
-                    Body = ontology.Body,
-                    Status = ontology.Status,
-                    Tags = ontology.Tags,
-                    Properties = ontology.Properties,
-                    Source = new[] { MetadataFor(ontology).Value<String>("@id") },
-                    Modified = DateTime.MinValue
-                }
-            );
-
             AddMapForAll<ResourceMapped>(resources =>
-                from resource in resources.Where(r => MetadataFor(r).Value<String>("@collection").EndsWith("Resource"))
+                from resource in resources
                 select new Resource
                 {
-                    Context = MetadataFor(resource).Value<String>("@collection").Replace("Resource", ""),
+                    Context = resource.Context ?? MetadataFor(resource).Value<String>("@collection").Replace("Resource", ""),
                     ResourceId = resource.ResourceId,
                     Type = resource.Type,
                     SubType = resource.SubType,
