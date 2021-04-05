@@ -21,7 +21,7 @@ namespace resource_etl
                 {
                     Context = resource.Context,
                     ResourceId = type + "/" + GenerateHash(resource.ResourceId).Replace("/", "/-"),
-                    Tags = ontology.Tags,
+                    Tags = ontology.Tags.Union(new[] { "@ontology" }),
                     Properties = ontology.Properties,
                     Source = new[] { MetadataFor(resource).Value<String>("@id") },
                     Modified = MetadataFor(resource).Value<DateTime>("@last-modified")
@@ -33,17 +33,21 @@ namespace resource_etl
                 from type in resource.Type
                 from ontologyreference in LoadDocument<ResourceMappingReferences>("ResourceMappingReferences/" + resource.Context + "/" + type).ReduceOutputs
                 let ontology = LoadDocument<ResourceMapping>(ontologyreference)
-                where ontology != null && !ontology.Tags.Contains("@fetch")
+                where ontology != null
 
                 from ontologypropertyresource in (
                     from ontologyproperty in ontology.Properties.Where(p => !p.Name.StartsWith("@"))
+                    where !ontology.Tags.Contains("@fetch")
                     let property = resource.Properties.Where(p => p.Name == ontologyproperty.Name)
                     from propertyresource in property.SelectMany(p => p.Resources).Where(r => !String.IsNullOrEmpty(r.ResourceId))
 
                     select new Resource
                     {
                         Context = propertyresource.Context ?? ontology.Context,
-                        ResourceId = propertyresource.ResourceId
+                        ResourceId = propertyresource.ResourceId,
+                        Tags = new string[] { },
+                        Properties = new Property[] { },
+                        Source = new string[] { }
                     }
                 ).Union(
                     from ontologyproperty in ontology.Properties.Where(p => !p.Name.StartsWith("@"))
@@ -55,10 +59,29 @@ namespace resource_etl
                         from resourceIdFormattedValue in ResourceFormat(resourceIdValue, resource)
                         select resourceIdFormattedValue
 
+                    where ontologyresource.Tags.Contains("@push") || LoadDocument<ResourceMappingReferences>("ResourceMappingReferences/" + ontologyresource.Context + "/" + resourceId) != null
+
                     select new Resource
                     {
                         Context = ontologyresource.Context,
-                        ResourceId = resourceId
+                        ResourceId = resourceId,
+                        Tags = ontologyresource.Tags,
+                        Properties = ontologyresource.Properties.Where(p => ontologyresource.Tags.Contains("@push") || p.Tags.Contains("@push")),
+                        Source = (ontologyresource.Tags.Contains("@push") || ontologyresource.Properties.Any(p => p.Tags.Contains("@push")))
+                            ? new[] { MetadataFor(resource).Value<String>("@id") }
+                            : new string[] { }
+                    }
+                ).Union(
+                    from aliasValue in ontology.Properties.Where(p => p.Name == "@alias").SelectMany(p => p.Value)
+                    from asliasFormattedValue in ResourceFormat(aliasValue, resource)
+
+                    select new Resource
+                    {
+                        Context = ontology.Context,
+                        ResourceId = asliasFormattedValue,
+                        Tags = new[] { "@alias" },
+                        Properties = new Property[] { },
+                        Source = new[] { MetadataFor(resource).Value<String>("@id") }
                     }
                 )
 
@@ -66,9 +89,9 @@ namespace resource_etl
                 {
                     Context = ontologypropertyresource.Context,
                     ResourceId = ontologypropertyresource.ResourceId,
-                    Tags = new string[] { },
-                    Properties = new Property[] { },
-                    Source = new string[] { },
+                    Tags = ontologypropertyresource.Tags,
+                    Properties = ontologypropertyresource.Properties,
+                    Source = ontologypropertyresource.Source,
                     Modified = MetadataFor(resource).Value<DateTime>("@last-modified")
                 }
             );
