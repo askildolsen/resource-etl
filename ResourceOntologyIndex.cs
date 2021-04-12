@@ -73,15 +73,32 @@ namespace resource_etl
                     }
                 ).Union(
                     from aliasValue in ontology.Properties.Where(p => p.Name == "@alias").SelectMany(p => p.Value)
-                    from asliasFormattedValue in ResourceFormat(aliasValue, resource)
+                    from aliasFormattedValue in ResourceFormat(aliasValue, resource)
 
                     select new Resource
                     {
                         Context = ontology.Context,
-                        ResourceId = asliasFormattedValue,
+                        ResourceId = aliasFormattedValue,
                         Tags = new[] { "@alias" },
                         Properties = new Property[] { },
                         Source = new[] { MetadataFor(resource).Value<String>("@id") }
+                    }
+                ).Union(
+                    from aliasValue in ontology.Properties.Where(p => p.Name == "@alias").SelectMany(p => p.Value)
+                    from aliasFormattedValue in ResourceFormat(aliasValue, resource)
+
+                    select new Resource
+                    {
+                        Context = resource.Context,
+                        ResourceId = resource.ResourceId,
+                        Tags = new string[] { },
+                        Properties = new[] {
+                            new Property {
+                                Name = "@alias",
+                                Source = new[] { "ResourceOntologyReferences/" + resource.Context + "/" + aliasFormattedValue }
+                            }
+                        },
+                        Source = new string[] { }
                     }
                 )
 

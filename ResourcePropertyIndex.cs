@@ -48,7 +48,7 @@ namespace resource_etl
                                 }
                             ).Union(
                                 from ontologyresource in ontologyproperty.Resources
-                                from resourceId in 
+                                from resourceId in
                                     from resourceIdValue in ontologyresource.Properties.Where(p => p.Name == "@resourceId").SelectMany(p => p.Value)
                                     from resourceIdFormattedValue in ResourceFormat(resourceIdValue, resource, property)
                                     where LoadDocument<ResourceMappingReferences>("ResourceMappingReferences/" + (ontologyresource.Context ?? ontology.Context) + "/" + resourceIdFormattedValue) != null
@@ -59,7 +59,25 @@ namespace resource_etl
                                 }
                             ).Union(
                                 from ontologyresource in ontologyproperty.Resources
-                                from resourceId in 
+                                from resourceId in
+                                    from resourceIdValue in ontologyresource.Properties.Where(p => p.Name == "@resourceId").SelectMany(p => p.Value)
+                                    from resourceIdFormattedValue in ResourceFormat(resourceIdValue, resource, property)
+                                    where LoadDocument<ResourceMappingReferences>("ResourceMappingReferences/" + (ontologyresource.Context ?? ontology.Context) + "/" + resourceIdFormattedValue) != null
+                                    select resourceIdFormattedValue
+                                let aliasreference = LoadDocument<ResourceOntologyReferences>("ResourceOntologyReferences/" + (ontologyresource.Context ?? ontology.Context) + "/" + resourceId)
+                                from alias in LoadDocument<ResourceOntology>(aliasreference.ReduceOutputs)
+                                from aliasproperty in alias.Properties.Where(p => p.Name == "@alias")
+                                from aliaspropertyreference in LoadDocument<ResourceOntologyReferences>(aliasproperty.Source)
+                                from aliaspropertyresource in LoadDocument<ResourceOntology>(aliaspropertyreference.ReduceOutputs)
+                                from resourcemapping in LoadDocument<ResourceMapping>(aliaspropertyresource.Source)
+                                
+                                select new Resource {
+                                    Context = resourcemapping.Context,
+                                    ResourceId = resourcemapping.ResourceId
+                                }
+                            ).Union(
+                                from ontologyresource in ontologyproperty.Resources
+                                from resourceId in
                                     from resourceIdValue in ontologyresource.Properties.Where(p => p.Name == "@resourceId").SelectMany(p => p.Value)
                                     from resourceIdFormattedValue in ResourceFormat(resourceIdValue, resource, property)
                                     where LoadDocument<ResourceMappingReferences>("ResourceMappingReferences/" + (ontologyresource.Context ?? ontology.Context) + "/" + resourceIdFormattedValue) == null
@@ -67,6 +85,7 @@ namespace resource_etl
                                 let aliasreference = LoadDocument<ResourceOntologyReferences>("ResourceOntologyReferences/" + (ontologyresource.Context ?? ontology.Context) + "/" + resourceId)
                                 from alias in LoadDocument<ResourceOntology>(aliasreference.ReduceOutputs).Where(r => r.Tags.Contains("@alias"))
                                 from resourcemapping in LoadDocument<ResourceMapping>(alias.Source)
+
                                 select new Resource {
                                     Context = resourcemapping.Context,
                                     ResourceId = resourcemapping.ResourceId
