@@ -24,7 +24,7 @@ namespace resource_etl
                     Status = resource.Status,
                     Tags = resource.Tags,
                     Properties = resource.Properties,
-                    Source = new[] { MetadataFor(resource).Value<String>("@id") },
+                    Source = resource.Source,
                     Modified = MetadataFor(resource).Value<DateTime>("@last-modified")
                 }
             );
