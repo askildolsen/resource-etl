@@ -30,7 +30,10 @@ namespace resource_etl
                         let property = (!ontologyproperty.Tags.Contains("@derive")) ? resource.Properties.Where(p => p.Name == ontologyproperty.Name) :
                             from ontologyderivedproperty in ontologyproperty.Properties
                             from derivedproperty in resource.Properties
-                            where ontologyderivedproperty.Name == derivedproperty.Name && ontologyderivedproperty.Tags.All(t => derivedproperty.Tags.Contains(t))
+                            where ontologyderivedproperty.Name == derivedproperty.Name
+                                && ontologyderivedproperty.Tags.All(t => derivedproperty.Tags.Contains(t))
+                                && (ontologyderivedproperty.From == null || derivedproperty.From == null || ontologyderivedproperty.From >= derivedproperty.From)
+                                && (ontologyderivedproperty.Thru == null || derivedproperty.Thru == null || ontologyderivedproperty.Thru <= derivedproperty.Thru)
                             select derivedproperty
 
                         select new Property {
@@ -118,7 +121,10 @@ namespace resource_etl
                         let property = (!ontologyproperty.Tags.Contains("@derive")) ? resource.Properties.Where(p => p.Name == ontologyproperty.Name) :
                             from ontologyderivedproperty in ontologyproperty.Properties
                             from derivedproperty in resource.Properties
-                            where ontologyderivedproperty.Name == derivedproperty.Name && ontologyderivedproperty.Tags.All(t => derivedproperty.Tags.Contains(t))
+                            where ontologyderivedproperty.Name == derivedproperty.Name
+                                && ontologyderivedproperty.Tags.All(t => derivedproperty.Tags.Contains(t))
+                                && (ontologyderivedproperty.From == null || derivedproperty.From == null || ontologyderivedproperty.From >= derivedproperty.From)
+                                && (ontologyderivedproperty.Thru == null || derivedproperty.Thru == null || ontologyderivedproperty.Thru <= derivedproperty.Thru)
                             select derivedproperty
 
                         select new Property {
