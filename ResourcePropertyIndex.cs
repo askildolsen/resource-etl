@@ -123,8 +123,8 @@ namespace resource_etl
                             from derivedproperty in resource.Properties
                             where ontologyderivedproperty.Name == derivedproperty.Name
                                 && ontologyderivedproperty.Tags.All(t => derivedproperty.Tags.Contains(t))
-                                && (ontologyderivedproperty.From == null || derivedproperty.From == null || ontologyderivedproperty.From >= derivedproperty.From)
-                                && (ontologyderivedproperty.Thru == null || derivedproperty.Thru == null || ontologyderivedproperty.Thru <= derivedproperty.Thru)
+                                && (ontologyderivedproperty.From == null || ontologyderivedproperty.From <= (derivedproperty.Thru ?? DateTime.MaxValue))
+                                && (ontologyderivedproperty.Thru == null || ontologyderivedproperty.Thru >= (derivedproperty.From ?? DateTime.MinValue))
                             select derivedproperty
 
                         select new Property {
